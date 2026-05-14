@@ -37,20 +37,19 @@ A cottage-core private diary for children — SvelteKit full-stack app, SQLite, 
 
 ## Project documents
 
-Kamae chain lives at the project root:
-- `kamae-1-edelmore-diary-seed.md` — Kamae 1+2, braided (seed + system design)
-- `kamae-2-edelmore-system-design.md` — Kamae 2 standalone
-
-Future hos: `ho-process/hos/`
+Kamae chain lives in `ho-process/` (gitignored — private practitioner work):
+- `ho-process/kamae-1-edelmore-diary-seed.md` — Kamae 1+2, braided (seed + system design)
+- `ho-process/kamae-2-edelmore-system-design.md` — Kamae 2 standalone
+- `ho-process/hos/` — per-ho documents (Kamae 5)
 
 ## Deployment
 
-Docker → homelab via `sageframe-docker-deploy` when ready. See `kamae-2-edelmore-system-design.md`
+Docker → homelab via `sageframe-docker-deploy` when ready. See `ho-process/kamae-2-edelmore-system-design.md`
 for the deployment sketch. Whisper is a separate homelab service.
 
 ## References
 
-- System design: `kamae-2-edelmore-system-design.md`
+- System design: `ho-process/kamae-2-edelmore-system-design.md`
 - StPageFlip: https://github.com/Nodlik/StPageFlip
 - SvelteKit docs: https://kit.svelte.dev
 - faster-whisper: separate homelab service (already running)

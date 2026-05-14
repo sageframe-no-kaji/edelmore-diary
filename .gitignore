@@ -37,3 +37,4 @@ data/
 
 # ─── Private prompts (Ho System convention) ─────────────────────────────
 prompts/
+ho-process/
