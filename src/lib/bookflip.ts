@@ -21,7 +21,7 @@ export const bookflip: Action<HTMLElement, BookflipParams> = (
   // biome-ignore lint/suspicious/noExplicitAny: page-flip has no published type for its runtime instance
   let pf: any;
 
-  /* v8 ignore next 34 — async browser-only block; page-flip requires DOM and window */
+  /* v8 ignore next 33 — async browser-only block; page-flip requires DOM and window */
   void (async () => {
     if (destroyed) return;
     try {
@@ -41,9 +41,8 @@ export const bookflip: Action<HTMLElement, BookflipParams> = (
         maxHeight: 780,
         showCover: false,
         mobileScrollSupport: false,
-        useMouseEvents: true,
-        clickEventForward: true,
-        swipeDistance: 50,
+        useMouseEvents: false,
+        swipeDistance: 30,
         startPage: params.startPage ?? 0,
         autoSize: true,
       });

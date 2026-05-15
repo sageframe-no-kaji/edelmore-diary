@@ -28,9 +28,11 @@ function makeFormData(fields: Record<string, string>): FormData {
 }
 
 describe('load', () => {
-  it('returns nothing when user is not logged in', async () => {
-    const result = await load({ locals: { db: freshDb(), user: undefined } } as any);
-    expect(result).toBeUndefined();
+  it('returns user list when not logged in', async () => {
+    const db = freshDb();
+    createUser(db, 'Iona', 'hash');
+    const result = await load({ locals: { db, user: undefined } } as any);
+    expect(result).toMatchObject({ users: [{ username: 'Iona' }] });
   });
 
   it('redirects to / when user is already logged in', async () => {

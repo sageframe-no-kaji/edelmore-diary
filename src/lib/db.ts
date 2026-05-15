@@ -82,6 +82,13 @@ export function countUsers(db: Database): number {
   return (db.prepare('SELECT COUNT(*) as count FROM users').get() as { count: number }).count;
 }
 
+export function listUsers(db: Database): { id: number; username: string }[] {
+  return db.prepare('SELECT id, username FROM users ORDER BY username ASC').all() as {
+    id: number;
+    username: string;
+  }[];
+}
+
 export function getSession(db: Database, id: string): Session | undefined {
   return db
     .prepare("SELECT * FROM sessions WHERE id = ? AND expires_at > datetime('now')")

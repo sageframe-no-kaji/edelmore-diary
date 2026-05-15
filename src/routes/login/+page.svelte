@@ -1,65 +1,80 @@
 <script lang="ts">
-import type { ActionData } from './$types';
+import type { ActionData, PageData } from './$types';
 
-const { form }: { form: ActionData } = $props();
+const { data, form }: { data: PageData; form: ActionData } = $props();
 
-// biome-ignore lint/style/useConst: $state runes must be let — Svelte 5 requires reassignment
 let selectedUser = $state('');
-// biome-ignore lint/style/useConst: $state runes must be let — Svelte 5 requires reassignment
 let pin = $state('');
+
+function selectUser(name: string) {
+  selectedUser = name;
+  pin = '';
+}
 </script>
 
-<div class="flex min-h-screen items-center justify-center bg-stone-50">
-	<div class="w-full max-w-sm space-y-6 rounded-lg border border-stone-200 bg-white p-8 shadow-sm">
-		<h1 class="font-serif text-2xl text-stone-800">Edelmore Diary</h1>
+<div class="paper flex min-h-screen items-center justify-center">
+	<div class="paper w-full max-w-sm space-y-8 rounded-sm border border-cream-300 p-10 shadow-md">
+		<div class="text-center space-y-1">
+			<h1 class="font-serif text-3xl text-ink-900 italic">Edelmore</h1>
+			<p class="font-serif text-xs text-cream-600 tracking-widest uppercase">A private diary</p>
+		</div>
 
-		<form method="POST" class="space-y-4">
-			<fieldset class="space-y-2">
-				<legend class="text-sm text-stone-500">Who are you?</legend>
-				<div class="flex gap-3">
-					{#each ['Iona', 'Isla'] as name}
-						<button
-							type="button"
-							class="flex-1 rounded border px-4 py-2 text-sm font-medium transition-colors
-								{selectedUser === name
-								? 'border-stone-800 bg-stone-800 text-white'
-								: 'border-stone-300 bg-white text-stone-700 hover:border-stone-500'}"
-							onclick={() => { selectedUser = name; pin = ''; }}
-						>
-							{name}
-						</button>
-					{/each}
-				</div>
-				<input type="hidden" name="username" value={selectedUser} />
-			</fieldset>
+		<form method="POST" class="space-y-6">
+			{#if data.users.length > 0}
+				<fieldset class="space-y-3">
+					<legend class="font-serif text-sm text-cream-600">Who are you?</legend>
+					<div class="flex flex-wrap gap-2">
+						{#each data.users as user}
+							<button
+								type="button"
+								class="flex-1 min-w-24 rounded-sm border px-4 py-2 font-serif text-sm transition-colors
+									{selectedUser === user.username
+									? 'border-ornament-gold bg-ornament-gold text-cream-50'
+									: 'border-cream-400 bg-cream-100 text-ink-900 hover:border-ornament-gold hover:text-ornament-gold'}"
+								onclick={() => selectUser(user.username)}
+							>
+								{user.username}
+							</button>
+						{/each}
+					</div>
+					<input type="hidden" name="username" value={selectedUser} />
+				</fieldset>
+			{:else}
+				<p class="font-serif text-sm text-cream-600 text-center">
+					No accounts yet. <a href="/admin" class="text-ornament-gold hover:underline">Create one →</a>
+				</p>
+			{/if}
 
 			{#if selectedUser}
 				<fieldset class="space-y-2">
-					<legend class="text-sm text-stone-500">Enter your 4-digit PIN</legend>
+					<legend class="font-serif text-sm text-cream-600">Your 4-digit PIN</legend>
 					<input
 						type="password"
 						name="pin"
 						inputmode="numeric"
-						pattern="[0-9]{4}"
 						maxlength="4"
-						autocomplete="current-password"
+						autocomplete="off"
 						bind:value={pin}
-						class="w-full rounded border border-stone-300 px-3 py-2 text-center font-mono text-xl tracking-widest focus:border-stone-500 focus:outline-none"
+						class="w-full rounded-sm border border-cream-300 bg-cream-50 px-3 py-3 text-center font-mono text-2xl tracking-[0.5em] text-ink-900 focus:border-ornament-gold focus:outline-none"
 					/>
 				</fieldset>
+
+				{#if form?.error}
+					<p class="font-serif text-xs text-red-600 text-center">{form.error}</p>
+				{/if}
 
 				<button
 					type="submit"
 					disabled={pin.length !== 4}
-					class="w-full rounded bg-stone-800 px-4 py-2 text-sm font-medium text-white hover:bg-stone-700 disabled:cursor-not-allowed disabled:opacity-40"
+					class="w-full rounded-sm border border-ornament-gold bg-ornament-gold px-4 py-3 font-serif text-sm text-cream-50 hover:bg-ornament-gold/90 disabled:cursor-not-allowed disabled:opacity-40"
 				>
 					Open my diary
 				</button>
 			{/if}
-
-			{#if form?.error}
-				<p class="text-sm text-red-600">{form.error}</p>
-			{/if}
 		</form>
+
+		<div class="text-center">
+			<a href="/admin" class="font-serif text-xs text-cream-500 hover:text-cream-700">Manage accounts</a>
+		</div>
 	</div>
 </div>

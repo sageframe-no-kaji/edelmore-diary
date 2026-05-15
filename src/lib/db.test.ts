@@ -13,6 +13,7 @@ import {
   getUserByUsername,
   listEntryDates,
   listEntryDatesWithPreview,
+  listUsers,
   makeEntryPreview,
   updateSessionExpiry,
   upsertEntry,
@@ -77,6 +78,19 @@ describe('user operations', () => {
   it('createUser enforces UNIQUE username', () => {
     createUser(db, 'Iona', 'hash1');
     expect(() => createUser(db, 'Iona', 'hash2')).toThrow();
+  });
+
+  it('listUsers returns all users sorted by username', () => {
+    createUser(db, 'Isla', 'hash2');
+    createUser(db, 'Iona', 'hash1');
+    const users = listUsers(db);
+    expect(users.map((u) => u.username)).toEqual(['Iona', 'Isla']);
+    expect(users[0]).toHaveProperty('id');
+    expect(users[0]).not.toHaveProperty('pin_hash');
+  });
+
+  it('listUsers returns empty array when no users exist', () => {
+    expect(listUsers(db)).toEqual([]);
   });
 });
 
