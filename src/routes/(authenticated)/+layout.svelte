@@ -140,7 +140,11 @@ let splitPoints: number[] = $state([]);
 let entryPageSpread = $state(0);
 // biome-ignore lint/style/useConst: bind:this requires let
 let textareaEl: HTMLTextAreaElement | null = $state(null);
+// biome-ignore lint/style/useConst: bind:this requires let
+let rightTextareaEl: HTMLTextAreaElement | null = $state(null);
 let measureEl: HTMLTextAreaElement | null = null;
+let targetScrollTopLeft = $state(0);
+let targetScrollTopRight = $state(0);
 
 const entrySpreadCount = $derived(Math.floor(splitPoints.length / 2) + 1);
 const hasMoreContent = $derived(entryPageSpread < entrySpreadCount - 1);
@@ -160,6 +164,8 @@ $effect(() => {
   untrack(() => {
     splitPoints = [];
     entryPageSpread = 0;
+    targetScrollTopLeft = 0;
+    targetScrollTopRight = 0;
   });
 });
 
@@ -200,6 +206,45 @@ $effect(() => {
   }, 300);
   return () => clearTimeout(timer);
 });
+
+// Recompute page scroll offsets when split points or spread index changes.
+$effect(() => {
+  const spread = entryPageSpread;
+  const points = splitPoints;
+  /* v8 ignore next 22 */
+  untrack(() => {
+    if (!measureEl || !textareaEl) return;
+    const c = content;
+    const style = getComputedStyle(textareaEl);
+    measureEl.style.width = style.width;
+    measureEl.style.height = style.height;
+    measureEl.style.font = style.font;
+    measureEl.style.lineHeight = style.lineHeight;
+    measureEl.style.padding = style.padding;
+    const leftStart = spread === 0 ? 0 : (points[spread * 2 - 1] ?? 0);
+    // biome-ignore lint/style/noNonNullAssertion: guarded by null check above closure
+    measureEl!.value = c.slice(0, leftStart);
+    // biome-ignore lint/style/noNonNullAssertion: guarded by null check above closure
+    targetScrollTopLeft = leftStart === 0 ? 0 : measureEl!.scrollHeight;
+    const rightStart = points[spread * 2];
+    if (rightStart !== undefined) {
+      // biome-ignore lint/style/noNonNullAssertion: guarded by null check above closure
+      measureEl!.value = c.slice(0, rightStart);
+      // biome-ignore lint/style/noNonNullAssertion: guarded by null check above closure
+      targetScrollTopRight = measureEl!.scrollHeight;
+    }
+  });
+});
+
+// Apply scroll positions to textarea elements when they change.
+/* v8 ignore next 3 */
+$effect(() => {
+  if (textareaEl) textareaEl.scrollTop = targetScrollTopLeft;
+});
+/* v8 ignore next 3 */
+$effect(() => {
+  if (rightTextareaEl) rightTextareaEl.scrollTop = targetScrollTopRight;
+});
 </script>
 
 <!-- Full-height book container -->
@@ -215,8 +260,6 @@ $effect(() => {
 				{canFlipNext}
 				{spreadIndex}
 				{spreadCount}
-				wideRightZone={spreadState.kind === 'entry' && entryPageSpread * 2 < splitPoints.length}
-				wideLeftZone={spreadState.kind === 'entry' && entryPageSpread > 0}
 			>
 				{#snippet leftPage()}
 					{#if spreadState.kind === 'entry'}
@@ -224,33 +267,30 @@ $effect(() => {
 							<div class="text-xs text-stone-400 mb-4 tracking-wide uppercase">
 								{($page.data as any).displayDate ?? ''}
 							</div>
-							{#if entryPageSpread === 0}
-								<textarea
-									bind:this={textareaEl}
-									bind:value={content}
-									onscroll={() => { if (textareaEl) textareaEl.scrollTop = 0; }}
-									class="flex-1 w-full resize-none overflow-hidden bg-transparent text-ink-900 font-serif text-sm leading-relaxed outline-none"
-									placeholder="Begin writing…"
-								></textarea>
-								{#if saved}
-									<span class="text-xs text-stone-400 italic mt-2">Saved</span>
-								{/if}
-							{:else}
-								<div class="flex-1 overflow-hidden">
-									<p class="text-ink-900 text-sm leading-relaxed whitespace-pre-wrap">{content.slice(splitPoints[entryPageSpread * 2 - 1], splitPoints[entryPageSpread * 2] ?? content.length)}</p>
-								</div>
+							<textarea
+								bind:this={textareaEl}
+								bind:value={content}
+								onscroll={() => { if (textareaEl) textareaEl.scrollTop = targetScrollTopLeft; }}
+								class="flex-1 w-full resize-none overflow-hidden bg-transparent text-ink-900 font-serif text-sm leading-relaxed outline-none"
+								placeholder="Begin writing…"
+							></textarea>
+							{#if saved}
+								<span class="text-xs text-stone-400 italic mt-2">Saved</span>
 							{/if}
 						</div>
 					{/if}
 				{/snippet}
 				{#snippet rightPage()}
 					{#if spreadState.kind === 'entry' && entryPageSpread * 2 < splitPoints.length}
-						<div class="relative h-full px-10 py-8 font-serif">
-							<div class="h-full overflow-hidden">
-								<p class="text-ink-900 text-sm leading-relaxed whitespace-pre-wrap">{content.slice(splitPoints[entryPageSpread * 2], splitPoints[entryPageSpread * 2 + 1] ?? content.length)}</p>
-							</div>
+						<div class="relative h-full flex flex-col px-10 py-8 font-serif">
+							<textarea
+								bind:this={rightTextareaEl}
+								bind:value={content}
+								onscroll={() => { if (rightTextareaEl) rightTextareaEl.scrollTop = targetScrollTopRight; }}
+								class="flex-1 w-full resize-none overflow-hidden bg-transparent text-ink-900 font-serif text-sm leading-relaxed outline-none"
+							></textarea>
 							{#if hasMoreContent}
-								<div class="absolute bottom-2 right-3 text-xs text-stone-400 italic">→ continued</div>
+								<div class="absolute bottom-2 right-3 text-xs text-stone-400 italic pointer-events-none">→ continued</div>
 							{/if}
 						</div>
 					{:else if spreadState.kind === 'toc'}

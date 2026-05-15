@@ -8,8 +8,6 @@ type Props = {
   canFlipNext?: boolean;
   spreadIndex?: number;
   spreadCount?: number;
-  wideLeftZone?: boolean;
-  wideRightZone?: boolean;
   leftPage?: Snippet;
   rightPage?: Snippet;
 };
@@ -21,8 +19,6 @@ const {
   canFlipNext = true,
   spreadIndex = 0,
   spreadCount = 0,
-  wideLeftZone = false,
-  wideRightZone = false,
   leftPage,
   rightPage,
 }: Props = $props();
@@ -132,7 +128,6 @@ function triggerFlipPrev() {
 		<button
 			type="button"
 			class="flip-zone flip-zone-prev"
-			class:wide={wideLeftZone}
 			aria-label="Previous page"
 			disabled={!canFlipPrev}
 			onclick={triggerFlipPrev}
@@ -141,7 +136,6 @@ function triggerFlipPrev() {
 		<button
 			type="button"
 			class="flip-zone flip-zone-next"
-			class:wide={wideRightZone}
 			aria-label="Next page"
 			disabled={!canFlipNext}
 			onclick={triggerFlipNext}
@@ -248,16 +242,8 @@ function triggerFlipPrev() {
 		width: calc(5% + 50px);
 	}
 
-	.flip-zone-prev.wide {
-		width: calc(50% + 50px);
-	}
-
 	.flip-zone-next {
 		right: -50px;
 		width: calc(5% + 50px);
-	}
-
-	.flip-zone-next.wide {
-		width: calc(50% + 50px);
 	}
 </style>
