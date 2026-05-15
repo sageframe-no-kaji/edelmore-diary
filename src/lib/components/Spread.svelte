@@ -9,6 +9,9 @@ type Props = {
   spreadIndex?: number;
   spreadCount?: number;
   flipDuration?: number;
+  // Incrementing flipTrigger programmatically fires a flip in flipTriggerDir.
+  flipTrigger?: number;
+  flipTriggerDir?: 'next' | 'prev';
   leftPage?: Snippet;
   rightPage?: Snippet;
 };
@@ -21,6 +24,8 @@ const {
   spreadIndex = 0,
   spreadCount = 0,
   flipDuration = 500,
+  flipTrigger = 0,
+  flipTriggerDir = 'next',
   leftPage,
   rightPage,
 }: Props = $props();
@@ -86,14 +91,13 @@ function triggerFlipPrev() {
   });
 }
 
-/* v8 ignore next 3 */
-export function flipNext() {
-  triggerFlipNext();
-}
-/* v8 ignore next 3 */
-export function flipPrev() {
-  triggerFlipPrev();
-}
+$effect(() => {
+  void flipTrigger;
+  /* v8 ignore next 4 */
+  if (!flipTrigger) return;
+  if (flipTriggerDir === 'next') triggerFlipNext();
+  else triggerFlipPrev();
+});
 </script>
 
 <div class="spread-container">

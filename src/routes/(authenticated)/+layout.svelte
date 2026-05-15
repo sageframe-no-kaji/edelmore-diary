@@ -5,7 +5,7 @@ import CalendarModal from '$lib/components/CalendarModal.svelte';
 import CoverPage from '$lib/components/CoverPage.svelte';
 import Spread from '$lib/components/Spread.svelte';
 import TocPage from '$lib/components/TocPage.svelte';
-import { COVERS, findCover } from '$lib/covers.js';
+import { findCover } from '$lib/covers.js';
 import type { EntryDatePreview } from '$lib/db.js';
 import { findSplitIndex, fixWidowOrphan, snapToWordBreak } from '$lib/overflow.js';
 import type { Snippet } from 'svelte';
@@ -86,9 +86,8 @@ $effect(() => {
 let flipDuration = $state(500);
 let cascadeRemaining = $state(0);
 let cascadeTargetDate = $state<string | null>(null);
-let cascadeDirection = $state<'next' | 'prev'>('next');
-// biome-ignore lint/style/useConst: bind:this requires let
-let spreadComp = $state<{ flipNext: () => void; flipPrev: () => void } | null>(null);
+let flipTrigger = $state(0);
+let flipTriggerDir = $state<'next' | 'prev'>('next');
 
 async function doNavigateTo(date: string) {
   /* v8 ignore next 7 */
@@ -117,14 +116,10 @@ async function navigateTo(date: string) {
   const steps = Math.min(Math.abs(delta) - 1, 18);
   cascadeRemaining = steps;
   cascadeTargetDate = date;
-  cascadeDirection = delta > 0 ? 'next' : 'prev';
+  flipTriggerDir = delta > 0 ? 'next' : 'prev';
   flipDuration = 80;
-  /* v8 ignore next 4 */
-  if (cascadeDirection === 'next') {
-    spreadComp?.flipNext();
-  } else {
-    spreadComp?.flipPrev();
-  }
+  /* v8 ignore next */
+  flipTrigger += 1;
 }
 
 function onFlipNext() {
@@ -138,7 +133,7 @@ function onFlipNext() {
       doNavigateTo(target);
     } else {
       /* v8 ignore next */
-      spreadComp?.flipNext();
+      flipTrigger += 1;
     }
     return;
   }
@@ -169,7 +164,7 @@ function onFlipPrev() {
       doNavigateTo(target);
     } else {
       /* v8 ignore next */
-      spreadComp?.flipPrev();
+      flipTrigger += 1;
     }
     return;
   }
@@ -369,7 +364,6 @@ $effect(() => {
 	>
 		<div class="relative w-full max-w-5xl h-full max-h-[80vh]">
 			<Spread
-				bind:this={spreadComp}
 				{onFlipPrev}
 				{onFlipNext}
 				{canFlipPrev}
@@ -377,6 +371,8 @@ $effect(() => {
 				{spreadIndex}
 				{spreadCount}
 				{flipDuration}
+				{flipTrigger}
+				{flipTriggerDir}
 			>
 				{#snippet leftPage()}
 					{#if spreadState.kind === 'entry'}

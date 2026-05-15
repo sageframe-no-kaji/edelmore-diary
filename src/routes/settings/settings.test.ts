@@ -22,6 +22,16 @@ describe('load', () => {
     userId = createUser(db, 'Iona', 'hash');
   });
 
+  it('redirects to /login when unauthenticated', async () => {
+    let threw: unknown;
+    try {
+      await load({ locals: { db, user: undefined } } as any);
+    } catch (e) {
+      threw = e;
+    }
+    expect((threw as { status?: number })?.status).toBe(302);
+  });
+
   it('returns coverId, username, and all covers', async () => {
     const result = (await load({
       locals: { db, user: { id: userId, username: 'Iona', cover_id: 'meadow' } },
@@ -50,6 +60,19 @@ describe('actions.select', () => {
     userId = createUser(db, 'Iona', 'hash');
   });
 
+  it('redirects to /login when unauthenticated', async () => {
+    let threw: unknown;
+    try {
+      await actions.select({
+        request: { formData: async () => makeFormData({ cover_id: 'sage' }) },
+        locals: { db, user: undefined },
+      } as any);
+    } catch (e) {
+      threw = e;
+    }
+    expect((threw as { status?: number })?.status).toBe(302);
+  });
+
   it('returns 400 for an unknown cover_id', async () => {
     const result = await actions.select({
       request: { formData: async () => makeFormData({ cover_id: 'nonexistent' }) },
@@ -76,7 +99,6 @@ describe('actions.select', () => {
     } catch (e) {
       threw = e;
     }
-    // SvelteKit redirect throws a Response-like object
     expect((threw as { status?: number })?.status).toBe(302);
     expect(getUserById(db, userId)?.cover_id).toBe('sage');
   });
