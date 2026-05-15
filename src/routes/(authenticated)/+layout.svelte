@@ -215,6 +215,8 @@ $effect(() => {
 				{canFlipNext}
 				{spreadIndex}
 				{spreadCount}
+				wideRightZone={spreadState.kind === 'entry' && entryPageSpread * 2 < splitPoints.length}
+				wideLeftZone={spreadState.kind === 'entry' && entryPageSpread > 0}
 			>
 				{#snippet leftPage()}
 					{#if spreadState.kind === 'entry'}
