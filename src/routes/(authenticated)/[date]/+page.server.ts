@@ -1,5 +1,5 @@
-import { formatDisplayDate, getNextDate, getPrevDate, isValidDate, todayIso } from '$lib/dates.js';
-import { getEntry, listEntryDatesWithPreview } from '$lib/db.js';
+import { formatDisplayDate, isValidDate, todayIso } from '$lib/dates.js';
+import { getEntry, listEntryDates, listEntryDatesWithPreview } from '$lib/db.js';
 import { redirect } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
 
@@ -10,9 +10,13 @@ export const load: PageServerLoad = async ({ params, locals }) => {
   const userId = locals.user!.id;
   const entry = getEntry(locals.db, userId, params.date);
 
-  const prevDate = getPrevDate(params.date);
-  const nextDate = getNextDate(params.date);
-  const prevEntry = getEntry(locals.db, userId, prevDate);
+  // prevDate/nextDate are adjacent diary entries, not calendar days.
+  // listEntryDates returns DESC (most recent first). idx === -1 means no entry for this date.
+  const dates = listEntryDates(locals.db, userId);
+  const idx = dates.indexOf(params.date);
+  const prevDate = idx === -1 ? null : idx < dates.length - 1 ? dates[idx + 1] : null;
+  const nextDate = idx === -1 ? null : idx > 0 ? dates[idx - 1] : null;
+
   const entryDatePreviews = listEntryDatesWithPreview(locals.db, userId);
 
   return {
@@ -21,8 +25,6 @@ export const load: PageServerLoad = async ({ params, locals }) => {
     content: entry?.content ?? '',
     prevDate,
     nextDate,
-    prevContent: prevEntry?.content ?? '',
-    prevDisplayDate: formatDisplayDate(prevDate),
     entryDatePreviews,
   };
 };

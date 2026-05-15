@@ -47,35 +47,42 @@ describe('[date] load', () => {
     await expect(load(makeEvent('2026-02-30') as any)).rejects.toMatchObject({ status: 302 });
   });
 
-  it('returns prevDate as the calendar day before the requested date', async () => {
+  it('returns null prevDate when no earlier entries exist', async () => {
+    upsertEntry(db, userId, '2026-05-14', 'Today.');
+    const result = (await load(makeEvent('2026-05-14') as any)) as any;
+    expect(result.prevDate).toBeNull();
+  });
+
+  it('returns null nextDate when no later entries exist', async () => {
+    upsertEntry(db, userId, '2026-05-14', 'Today.');
+    const result = (await load(makeEvent('2026-05-14') as any)) as any;
+    expect(result.nextDate).toBeNull();
+  });
+
+  it('returns prevDate as the nearest earlier diary entry', async () => {
+    upsertEntry(db, userId, '2026-05-13', 'Yesterday.');
+    upsertEntry(db, userId, '2026-05-14', 'Today.');
     const result = (await load(makeEvent('2026-05-14') as any)) as any;
     expect(result.prevDate).toBe('2026-05-13');
   });
 
-  it('returns nextDate as the calendar day after the requested date', async () => {
+  it('returns nextDate as the nearest later diary entry', async () => {
+    upsertEntry(db, userId, '2026-05-14', 'Today.');
+    upsertEntry(db, userId, '2026-05-15', 'Tomorrow.');
     const result = (await load(makeEvent('2026-05-14') as any)) as any;
     expect(result.nextDate).toBe('2026-05-15');
   });
 
-  it('returns prevContent from an existing previous entry', async () => {
-    upsertEntry(db, userId, '2026-05-13', 'Yesterday.');
+  it('returns null prevDate and nextDate when current date has no entry', async () => {
+    upsertEntry(db, userId, '2026-05-13', 'Nearby.');
     const result = (await load(makeEvent('2026-05-14') as any)) as any;
-    expect(result.prevContent).toBe('Yesterday.');
+    expect(result.prevDate).toBeNull();
+    expect(result.nextDate).toBeNull();
   });
 
-  it('returns empty string for prevContent when no previous entry exists', async () => {
-    const result = (await load(makeEvent('2026-05-14') as any)) as any;
-    expect(result.prevContent).toBe('');
-  });
-
-  it('returns prevDisplayDate as a human-readable string', async () => {
-    const result = (await load(makeEvent('2026-05-14') as any)) as any;
-    expect(result.prevDisplayDate).toContain('2026');
-    expect(result.prevDisplayDate).toContain('May');
-    expect(result.prevDisplayDate).toContain('13');
-  });
-
-  it('handles month boundaries for prevDate', async () => {
+  it('handles month boundaries for prevDate via entry list', async () => {
+    upsertEntry(db, userId, '2026-04-30', 'End of April.');
+    upsertEntry(db, userId, '2026-05-01', 'Start of May.');
     const result = (await load(makeEvent('2026-05-01') as any)) as any;
     expect(result.prevDate).toBe('2026-04-30');
   });
