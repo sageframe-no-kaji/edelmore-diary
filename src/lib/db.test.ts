@@ -12,6 +12,8 @@ import {
   getUserById,
   getUserByUsername,
   listEntryDates,
+  listEntryDatesWithPreview,
+  makeEntryPreview,
   updateSessionExpiry,
   upsertEntry,
 } from './db.js';
@@ -179,5 +181,73 @@ describe('entry operations', () => {
     upsertEntry(db, userId, '2026-05-14', 'b');
     upsertEntry(db, userId, '2026-05-01', 'c');
     expect(listEntryDates(db, userId)).toEqual(['2026-05-14', '2026-05-10', '2026-05-01']);
+  });
+});
+
+describe('makeEntryPreview', () => {
+  it('returns the first line unchanged when it is 20 chars or fewer', () => {
+    expect(makeEntryPreview('Short line.')).toBe('Short line.');
+  });
+
+  it('truncates and appends ellipsis when first line exceeds 20 chars', () => {
+    const result = makeEntryPreview('This is a longer line than twenty chars.');
+    expect(result).toBe('This is a longer lin…');
+    expect(result.length).toBe(21); // 20 chars + 1 ellipsis char (…)
+  });
+
+  it('uses only the first line when content has multiple lines', () => {
+    expect(makeEntryPreview('First line.\nSecond line.')).toBe('First line.');
+  });
+
+  it('trims leading whitespace from the first line', () => {
+    expect(makeEntryPreview('  Indented line.')).toBe('Indented line.');
+  });
+
+  it('returns empty string for empty content', () => {
+    expect(makeEntryPreview('')).toBe('');
+  });
+});
+
+describe('listEntryDatesWithPreview', () => {
+  let db: Database;
+  let userId: number;
+
+  beforeEach(() => {
+    db = createDb(':memory:');
+    userId = createUser(db, 'Iona', 'hash1');
+  });
+
+  it('returns empty array when no entries exist', () => {
+    expect(listEntryDatesWithPreview(db, userId)).toEqual([]);
+  });
+
+  it('returns entries most-recent-first with preview', () => {
+    upsertEntry(db, userId, '2026-05-10', 'Older entry.');
+    upsertEntry(db, userId, '2026-05-14', 'Newer entry.');
+    const result = listEntryDatesWithPreview(db, userId);
+    expect(result).toEqual([
+      { entry_date: '2026-05-14', preview: 'Newer entry.' },
+      { entry_date: '2026-05-10', preview: 'Older entry.' },
+    ]);
+  });
+
+  it('truncates long first lines in previews', () => {
+    upsertEntry(
+      db,
+      userId,
+      '2026-05-14',
+      'This is a very long first line that exceeds twenty characters.'
+    );
+    const [{ preview }] = listEntryDatesWithPreview(db, userId);
+    expect(preview).toBe('This is a very long …');
+  });
+
+  it('isolates entries by user', () => {
+    const userId2 = createUser(db, 'Isla', 'hash2');
+    upsertEntry(db, userId, '2026-05-14', 'Iona entry.');
+    upsertEntry(db, userId2, '2026-05-14', 'Isla entry.');
+    const ionaResult = listEntryDatesWithPreview(db, userId);
+    expect(ionaResult).toHaveLength(1);
+    expect(ionaResult[0].preview).toBe('Iona entry.');
   });
 });

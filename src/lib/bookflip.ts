@@ -41,7 +41,9 @@ export const bookflip: Action<HTMLElement, BookflipParams> = (
         maxHeight: 780,
         showCover: false,
         mobileScrollSupport: false,
-        useMouseEvents: false,
+        useMouseEvents: true,
+        clickEventForward: true,
+        swipeDistance: 50,
         startPage: params.startPage ?? 0,
         autoSize: true,
       });

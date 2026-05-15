@@ -37,5 +37,6 @@ function handleContentChange(value: string) {
   prevDisplayDate={data.prevDisplayDate}
   nextDate={data.nextDate}
   {saved}
+  entryDatePreviews={data.entryDatePreviews}
   onContentChange={handleContentChange}
 />

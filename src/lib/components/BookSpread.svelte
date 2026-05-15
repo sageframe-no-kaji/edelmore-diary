@@ -1,6 +1,9 @@
 <script lang="ts">
 import { goto } from '$app/navigation';
 import { type BookflipInstance, bookflip } from '$lib/bookflip.js';
+import type { EntryDatePreview } from '$lib/db.js';
+import CalendarModal from './CalendarModal.svelte';
+import TocPage from './TocPage.svelte';
 
 type Props = {
   content: string;
@@ -11,6 +14,7 @@ type Props = {
   prevDisplayDate: string;
   nextDate: string;
   saved: boolean;
+  entryDatePreviews: EntryDatePreview[];
   onContentChange: (value: string) => void;
 };
 
@@ -23,10 +27,21 @@ const {
   prevDisplayDate,
   nextDate,
   saved,
+  entryDatePreviews,
   onContentChange,
 }: Props = $props();
 
 let flipBook: BookflipInstance | null = null;
+let showCalendar = $state(false);
+
+function openCalendar() {
+  showCalendar = true;
+}
+function closeCalendar() {
+  showCalendar = false;
+}
+
+const entryDates = $derived(new Set(entryDatePreviews.map((e) => e.entry_date)));
 
 function handleReady(instance: BookflipInstance) {
   flipBook = instance;
@@ -51,6 +66,7 @@ function navigateNext() {
 }
 
 function handleKeyDown(e: KeyboardEvent) {
+  if (showCalendar) return;
   if (e.key === 'ArrowLeft') navigatePrev();
   if (e.key === 'ArrowRight') navigateNext();
 }
@@ -58,11 +74,26 @@ function handleKeyDown(e: KeyboardEvent) {
 
 <svelte:window onkeydown={handleKeyDown} />
 
-<!-- Mobile: single page view (shown below md breakpoint via CSS) -->
+{#if showCalendar}
+  <CalendarModal
+    {entryDates}
+    currentDate={date}
+    onClose={closeCalendar}
+  />
+{/if}
+
+<!-- Mobile: single page view -->
 <div class="mobile-page paper md:hidden flex min-h-screen flex-col px-6 py-10">
   <div class="mx-auto w-full max-w-lg space-y-6">
     <div class="flex items-baseline justify-between">
-      <h1 class="font-serif text-base text-cream-700">{displayDate}</h1>
+      <button
+        type="button"
+        onclick={openCalendar}
+        class="font-serif text-base text-cream-700 hover:text-ornament-gold transition-colors text-left"
+        aria-label="Open calendar"
+      >
+        {displayDate}
+      </button>
       <span
         class="font-serif text-xs text-cream-500 transition-opacity duration-700 {saved
           ? 'opacity-100'
@@ -92,10 +123,9 @@ function handleKeyDown(e: KeyboardEvent) {
   </div>
 </div>
 
-<!-- Desktop: StPageFlip book spread (hidden below md) -->
+<!-- Desktop: StPageFlip book spread -->
 <div class="hidden md:flex items-center justify-center min-h-screen bg-cream-200 px-4 py-8">
   <div class="book-wrap relative" style="width: min(900px, 96vw); height: min(620px, 80vh);">
-    <!-- Navigation arrows outside the book -->
     <button
       type="button"
       onclick={navigatePrev}
@@ -113,20 +143,23 @@ function handleKeyDown(e: KeyboardEvent) {
       ›
     </button>
 
-    <!-- StPageFlip container -->
     <div
       class="book-container w-full h-full"
       use:bookflip={{ startPage: 2, onReady: handleReady }}
     >
-      <!-- Pages 0-1: blanks so flipPrev() from startPage=2 has room to animate -->
+      <!-- Page 0: blank (left side of TOC spread) -->
       <div data-page data-density="hard" class="page paper border-r border-cream-300">
         <div class="page-inner"></div>
       </div>
+
+      <!-- Page 1: TOC (right side of first spread — visible when flipping back) -->
       <div data-page data-density="hard" class="page paper">
-        <div class="page-inner"></div>
+        <div class="page-inner h-full overflow-hidden">
+          <TocPage entries={entryDatePreviews} />
+        </div>
       </div>
 
-      <!-- Page 2: Previous day (left side of main spread) -->
+      <!-- Page 2: Previous day (left of main spread) -->
       <div data-page class="page paper border-r border-cream-300">
         <div class="page-inner px-10 py-10">
           <p class="font-serif text-xs text-cream-600 mb-6 border-b border-cream-200 pb-3">
@@ -138,11 +171,18 @@ function handleKeyDown(e: KeyboardEvent) {
         </div>
       </div>
 
-      <!-- Page 3: Current day (right side of main spread — editable) -->
+      <!-- Page 3: Current day (right of main spread — editable) -->
       <div data-page class="page paper">
         <div class="page-inner px-10 py-10 flex flex-col h-full">
           <div class="flex items-baseline justify-between mb-6 border-b border-cream-200 pb-3">
-            <p class="font-serif text-xs text-cream-700">{displayDate}</p>
+            <button
+              type="button"
+              onclick={openCalendar}
+              class="font-serif text-xs text-cream-700 hover:text-ornament-gold transition-colors text-left"
+              aria-label="Open calendar"
+            >
+              {displayDate}
+            </button>
             <span
               class="font-serif text-xs text-cream-500 transition-opacity duration-700 {saved
                 ? 'opacity-100'
@@ -159,12 +199,14 @@ function handleKeyDown(e: KeyboardEvent) {
             spellcheck="true"
           ></textarea>
           <div class="flex justify-end pt-4">
-            <a href="/logout" class="font-serif text-xs text-cream-400 hover:text-cream-600">Log out</a>
+            <a href="/logout" class="font-serif text-xs text-cream-400 hover:text-cream-600"
+              >Log out</a
+            >
           </div>
         </div>
       </div>
 
-      <!-- Pages 4-5: blanks so flipNext() from startPage=2 has room to animate -->
+      <!-- Pages 4-5: blanks so flipNext() has room to animate -->
       <div data-page data-density="hard" class="page paper border-r border-cream-300">
         <div class="page-inner"></div>
       </div>

@@ -1,5 +1,5 @@
 import { formatDisplayDate, getNextDate, getPrevDate, isValidDate, todayIso } from '$lib/dates.js';
-import { getEntry } from '$lib/db.js';
+import { getEntry, listEntryDatesWithPreview } from '$lib/db.js';
 import { redirect } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
 
@@ -13,6 +13,7 @@ export const load: PageServerLoad = async ({ params, locals }) => {
   const prevDate = getPrevDate(params.date);
   const nextDate = getNextDate(params.date);
   const prevEntry = getEntry(locals.db, userId, prevDate);
+  const entryDatePreviews = listEntryDatesWithPreview(locals.db, userId);
 
   return {
     date: params.date,
@@ -22,5 +23,6 @@ export const load: PageServerLoad = async ({ params, locals }) => {
     nextDate,
     prevContent: prevEntry?.content ?? '',
     prevDisplayDate: formatDisplayDate(prevDate),
+    entryDatePreviews,
   };
 };

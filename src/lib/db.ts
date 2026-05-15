@@ -131,3 +131,24 @@ export function listEntryDates(db: Database, userId: number): string[] {
       .all(userId) as { entry_date: string }[]
   ).map((r) => r.entry_date);
 }
+
+export type EntryDatePreview = {
+  entry_date: string;
+  preview: string;
+};
+
+export function makeEntryPreview(content: string): string {
+  const firstLine = content.split('\n')[0].trimStart();
+  if (firstLine.length <= 20) return firstLine;
+  return `${firstLine.slice(0, 20)}…`;
+}
+
+export function listEntryDatesWithPreview(db: Database, userId: number): EntryDatePreview[] {
+  const rows = db
+    .prepare('SELECT entry_date, content FROM entries WHERE user_id = ? ORDER BY entry_date DESC')
+    .all(userId) as { entry_date: string; content: string }[];
+  return rows.map((r) => ({
+    entry_date: r.entry_date,
+    preview: makeEntryPreview(r.content),
+  }));
+}

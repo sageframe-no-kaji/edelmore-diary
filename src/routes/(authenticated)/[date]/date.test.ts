@@ -79,4 +79,21 @@ describe('[date] load', () => {
     const result = (await load(makeEvent('2026-05-01') as any)) as any;
     expect(result.prevDate).toBe('2026-04-30');
   });
+
+  it('returns entryDatePreviews as an empty array when no entries exist', async () => {
+    const result = (await load(makeEvent('2026-05-14') as any)) as any;
+    expect(Array.isArray(result.entryDatePreviews)).toBe(true);
+    expect(result.entryDatePreviews).toHaveLength(0);
+  });
+
+  it('returns entryDatePreviews with existing entries', async () => {
+    upsertEntry(db, userId, '2026-05-13', 'Yesterday.');
+    upsertEntry(db, userId, '2026-05-14', 'Today.');
+    const result = (await load(makeEvent('2026-05-14') as any)) as any;
+    expect(result.entryDatePreviews).toHaveLength(2);
+    expect(result.entryDatePreviews[0]).toMatchObject({
+      entry_date: '2026-05-14',
+      preview: 'Today.',
+    });
+  });
 });
