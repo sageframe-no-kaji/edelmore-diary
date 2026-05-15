@@ -1,6 +1,7 @@
 <script lang="ts">
 import { goto } from '$app/navigation';
 import { page } from '$app/stores';
+import CalendarModal from '$lib/components/CalendarModal.svelte';
 import Spread from '$lib/components/Spread.svelte';
 import TocPage from '$lib/components/TocPage.svelte';
 import type { EntryDatePreview } from '$lib/db.js';
@@ -135,6 +136,10 @@ const spreadIndex = $derived(getSpreadIndex());
 const spreadCount = $derived(entryDatePreviews.length + 2);
 // Primitive value — only changes when the actual date changes, not on same-date object reassignment.
 const entryDate = $derived(spreadState.kind === 'entry' ? spreadState.date : null);
+const entryDates = $derived(new Set(entryDatePreviews.map((e) => e.entry_date)));
+
+// biome-ignore lint/style/useConst: $state requires let for mutation
+let showCalendar = $state(false);
 
 let splitPoints: number[] = $state([]);
 let entryPageSpread = $state(0);
@@ -306,9 +311,14 @@ $effect(() => {
 				{#snippet leftPage()}
 					{#if spreadState.kind === 'entry'}
 						<div class="h-full flex flex-col px-10 py-8 font-serif">
-							<div class="text-xs text-stone-400 mb-4 tracking-wide uppercase">
+							<button
+								type="button"
+								onclick={() => { showCalendar = true; }}
+								class="text-xs text-stone-400 mb-4 tracking-wide uppercase hover:text-ornament-gold transition-colors text-left"
+								aria-label="Open calendar"
+							>
 								{($page.data as any).displayDate ?? ''}
-							</div>
+							</button>
 							<textarea
 								bind:this={textareaEl}
 								bind:value={content}
@@ -402,6 +412,14 @@ $effect(() => {
 		{/if}
 	</div>
 
+	{#if showCalendar && spreadState.kind === 'entry'}
+		<CalendarModal
+			{entryDates}
+			currentDate={spreadState.date}
+			onClose={() => { showCalendar = false; }}
+			onNavigate={navigateTo}
+		/>
+	{/if}
 </div>
 
 <!-- SvelteKit requires children to be rendered; content lives in the layout, not the page. -->

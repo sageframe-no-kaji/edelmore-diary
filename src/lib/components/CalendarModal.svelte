@@ -1,22 +1,24 @@
 <script lang="ts">
-import { goto } from '$app/navigation';
 import { DAY_LABELS, MONTH_NAMES, getCalendarDays, nextMonth, prevMonth } from '$lib/calendar.js';
+import { untrack } from 'svelte';
 
 type Props = {
   entryDates: Set<string>;
   currentDate: string;
   onClose: () => void;
+  onNavigate: (date: string) => void;
 };
 
-const { entryDates, currentDate, onClose }: Props = $props();
+const { entryDates, currentDate, onClose, onNavigate }: Props = $props();
 
-const startYear = Number(currentDate.slice(0, 4));
-const startMonth = Number(currentDate.slice(5, 7)) - 1;
+// Snapshot prop at open time — modal intentionally doesn't track prop changes.
+const initYear = untrack(() => Number(currentDate.slice(0, 4)));
+const initMonth = untrack(() => Number(currentDate.slice(5, 7)) - 1);
 
-let viewYear = $state(startYear);
-let viewMonth = $state(startMonth);
+let viewYear = $state(initYear);
+let viewMonth = $state(initMonth);
 
-const minYear = startYear - 5;
+const minYear = initYear - 5;
 const maxYear = new Date().getUTCFullYear() + 5;
 const yearOptions = Array.from({ length: maxYear - minYear + 1 }, (_, i) => minYear + i);
 
@@ -42,7 +44,7 @@ function setYear(y: number) {
 
 function navigateTo(date: string) {
   onClose();
-  goto(`/${date}`);
+  onNavigate(date);
 }
 
 function handleKeyDown(e: KeyboardEvent) {
