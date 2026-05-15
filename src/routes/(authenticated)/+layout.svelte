@@ -149,13 +149,31 @@ let targetScrollTopRight = $state(0);
 const entrySpreadCount = $derived(Math.floor(splitPoints.length / 2) + 1);
 const hasMoreContent = $derived(entryPageSpread < entrySpreadCount - 1);
 
-/* v8 ignore next 8 */
+/* v8 ignore next 18 */
 onMount(() => {
   measureEl = document.createElement('textarea');
   measureEl.style.cssText =
     'position:absolute;visibility:hidden;pointer-events:none;overflow:hidden;resize:none;top:-9999px;left:-9999px;';
   document.body.appendChild(measureEl);
-  return () => measureEl?.remove();
+
+  function onKeyDown(e: KeyboardEvent) {
+    const tag = (document.activeElement as HTMLElement)?.tagName;
+    if (tag === 'TEXTAREA' || tag === 'INPUT') return;
+    if (e.key === 'ArrowRight' && canFlipNext) {
+      e.preventDefault();
+      onFlipNext();
+    }
+    if (e.key === 'ArrowLeft' && canFlipPrev) {
+      e.preventDefault();
+      onFlipPrev();
+    }
+  }
+  window.addEventListener('keydown', onKeyDown);
+
+  return () => {
+    measureEl?.remove();
+    window.removeEventListener('keydown', onKeyDown);
+  };
 });
 
 // Reset split points and page when the entry date genuinely changes (not on same-date reassignment).
@@ -266,7 +284,16 @@ $effect(() => {
 <div class="h-screen bg-stone-900 flex flex-col">
 
 	<!-- Desktop: CSS 3D Spread -->
-	<div class="hidden md:flex flex-1 items-center justify-center p-8">
+	<div
+		role="presentation"
+		class="hidden md:flex flex-1 items-center justify-center p-8"
+		ontouchstart={(e) => { (e.currentTarget as HTMLElement).dataset.touchX = String(e.touches[0].clientX); }}
+		ontouchend={(e) => {
+			const startX = Number((e.currentTarget as HTMLElement).dataset.touchX ?? 0);
+			const delta = e.changedTouches[0].clientX - startX;
+			if (Math.abs(delta) > 50) { if (delta < 0 && canFlipNext) onFlipNext(); else if (delta > 0 && canFlipPrev) onFlipPrev(); }
+		}}
+	>
 		<div class="relative w-full max-w-5xl h-full max-h-[80vh]">
 			<Spread
 				{onFlipPrev}
@@ -322,7 +349,16 @@ $effect(() => {
 	</div>
 
 	<!-- Mobile: single page with nav buttons -->
-	<div class="md:hidden flex-1 flex flex-col bg-[#fdf6e3]">
+	<div
+		role="presentation"
+		class="md:hidden flex-1 flex flex-col bg-[#fdf6e3]"
+		ontouchstart={(e) => { (e.currentTarget as HTMLElement).dataset.touchX = String(e.touches[0].clientX); }}
+		ontouchend={(e) => {
+			const startX = Number((e.currentTarget as HTMLElement).dataset.touchX ?? 0);
+			const delta = e.changedTouches[0].clientX - startX;
+			if (Math.abs(delta) > 50) { if (delta < 0 && canFlipNext) onFlipNext(); else if (delta > 0 && canFlipPrev) onFlipPrev(); }
+		}}
+	>
 		{#if spreadState.kind === 'entry'}
 			<div class="flex items-center justify-between px-4 py-2 border-b border-stone-200">
 				<button
