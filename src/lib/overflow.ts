@@ -16,3 +16,17 @@ export function findSplitIndex(content: string, measure: (n: number) => boolean)
   }
   return lo;
 }
+
+/**
+ * Snaps a character-level split point backward to the nearest paragraph break (\n\n)
+ * or, failing that, to the nearest line break (\n), to avoid mid-sentence page splits.
+ * Returns splitAt unchanged if no suitable break precedes it.
+ */
+export function snapToWordBreak(content: string, splitAt: number): number {
+  const before = content.slice(0, splitAt);
+  const paraBreak = before.lastIndexOf('\n\n');
+  if (paraBreak >= 0) return paraBreak + 2;
+  const lineBreak = before.lastIndexOf('\n');
+  if (lineBreak >= 0) return lineBreak + 1;
+  return splitAt;
+}

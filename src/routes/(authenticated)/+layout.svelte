@@ -4,7 +4,7 @@ import { page } from '$app/stores';
 import Spread from '$lib/components/Spread.svelte';
 import TocPage from '$lib/components/TocPage.svelte';
 import type { EntryDatePreview } from '$lib/db.js';
-import { findSplitIndex } from '$lib/overflow.js';
+import { findSplitIndex, snapToWordBreak } from '$lib/overflow.js';
 import type { Snippet } from 'svelte';
 import { onMount, untrack } from 'svelte';
 
@@ -181,7 +181,8 @@ $effect(() => {
     measureEl.style.font = style.font;
     measureEl.style.lineHeight = style.lineHeight;
     measureEl.style.padding = style.padding;
-    const maxH = textareaEl.clientHeight;
+    // 4px buffer accounts for rendering differences between measureEl and the real textarea.
+    const maxH = textareaEl.clientHeight - 4;
     const points: number[] = [];
     let offset = 0;
     while (offset < c.length) {
@@ -197,8 +198,12 @@ $effect(() => {
         return measureEl!.scrollHeight <= maxH;
       });
       if (relSplit === 0) break;
-      points.push(offset + relSplit);
-      offset += relSplit;
+      // Snap backward to nearest paragraph or line break to avoid mid-sentence page splits.
+      const rawSplit = offset + relSplit;
+      const snapped = snapToWordBreak(c, rawSplit);
+      const actualSplit = snapped > offset ? snapped : rawSplit;
+      points.push(actualSplit);
+      offset = actualSplit;
     }
     splitPoints = points;
     const newSpreadCount = Math.floor(points.length / 2) + 1;

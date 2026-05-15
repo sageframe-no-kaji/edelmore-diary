@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { findSplitIndex } from './overflow.js';
+import { findSplitIndex, snapToWordBreak } from './overflow.js';
 
 describe('findSplitIndex', () => {
   it('returns content.length when entire content fits', () => {
@@ -33,5 +33,30 @@ describe('findSplitIndex', () => {
     const content = 'x'.repeat(1000);
     const result = findSplitIndex(content, (n) => n <= 750);
     expect(result).toBe(750);
+  });
+});
+
+describe('snapToWordBreak', () => {
+  it('returns splitAt when there are no newlines', () => {
+    expect(snapToWordBreak('hello world', 8)).toBe(8);
+  });
+
+  it('snaps to paragraph break (double newline)', () => {
+    const content = 'First paragraph.\n\nSecond paragraph starts here.';
+    expect(snapToWordBreak(content, 40)).toBe(18); // after '\n\n' at index 16
+  });
+
+  it('prefers paragraph break over single newline when both exist', () => {
+    const content = 'A\n\nB\nC more text here';
+    expect(snapToWordBreak(content, 18)).toBe(3); // after '\n\n' at index 1
+  });
+
+  it('falls back to single newline when no paragraph break exists', () => {
+    const content = 'line one\nline two extra text';
+    expect(snapToWordBreak(content, 20)).toBe(9); // after '\n' at index 8
+  });
+
+  it('returns splitAt when no break precedes it', () => {
+    expect(snapToWordBreak('nospace', 5)).toBe(5);
   });
 });
