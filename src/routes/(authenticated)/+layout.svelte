@@ -181,8 +181,7 @@ $effect(() => {
     measureEl.style.font = style.font;
     measureEl.style.lineHeight = style.lineHeight;
     measureEl.style.padding = style.padding;
-    // 4px buffer accounts for rendering differences between measureEl and the real textarea.
-    const maxH = textareaEl.clientHeight - 4;
+    const maxH = textareaEl.clientHeight;
     const points: number[] = [];
     let offset = 0;
     while (offset < c.length) {
