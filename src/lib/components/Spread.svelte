@@ -12,6 +12,12 @@ type Props = {
   // Incrementing flipTrigger programmatically fires a flip in flipTriggerDir.
   flipTrigger?: number;
   flipTriggerDir?: 'next' | 'prev';
+  // Zone widths as % of spread width. Cover state passes nextZonePct=50 so the
+  // whole right page is a click target; entry state keeps them narrow.
+  prevZonePct?: number;
+  nextZonePct?: number;
+  // When set, left page renders with this background and no centre border.
+  leftPageBg?: string;
   leftPage?: Snippet;
   rightPage?: Snippet;
 };
@@ -26,6 +32,9 @@ const {
   flipDuration = 500,
   flipTrigger = 0,
   flipTriggerDir = 'next',
+  prevZonePct = 12,
+  nextZonePct = 12,
+  leftPageBg,
   leftPage,
   rightPage,
 }: Props = $props();
@@ -120,7 +129,10 @@ $effect(() => {
 		{/if}
 
 		<!-- Left page -->
-		<div class="page page-left">
+		<div
+			class="page page-left"
+			style={leftPageBg != null ? `background: ${leftPageBg}; border-right: none;` : ''}
+		>
 			{#if leftPage}{@render leftPage()}{/if}
 		</div>
 
@@ -143,6 +155,7 @@ $effect(() => {
 		<button
 			type="button"
 			class="flip-zone flip-zone-prev"
+			style="width: {prevZonePct}%"
 			aria-label="Previous page"
 			disabled={!canFlipPrev}
 			onclick={triggerFlipPrev}
@@ -151,6 +164,7 @@ $effect(() => {
 		<button
 			type="button"
 			class="flip-zone flip-zone-next"
+			style="width: {nextZonePct}%"
 			aria-label="Next page"
 			disabled={!canFlipNext}
 			onclick={triggerFlipNext}
@@ -254,11 +268,9 @@ $effect(() => {
 
 	.flip-zone-prev {
 		left: 0;
-		width: 8%;
 	}
 
 	.flip-zone-next {
 		right: 0;
-		width: 8%;
 	}
 </style>

@@ -43,6 +43,13 @@ const activeCover = $derived(findCover(coverId));
 // biome-ignore lint/suspicious/noExplicitAny: layout data merged into $page.data
 const username = $derived(($page.data as any).user?.username ?? '');
 
+// Flip zone widths and left page background for cover state.
+const prevZonePct = $derived(spreadState.kind === 'cover' ? 0 : 12);
+const nextZonePct = $derived(spreadState.kind === 'cover' ? 50 : 12);
+const leftPageBg = $derived(
+  spreadState.kind === 'cover' ? activeCover.palette.background : undefined
+);
+
 // Sync when SvelteKit navigates to a new [date] route.
 $effect(() => {
   const date = $page.params.date;
@@ -373,6 +380,9 @@ $effect(() => {
 				{flipDuration}
 				{flipTrigger}
 				{flipTriggerDir}
+				{prevZonePct}
+				{nextZonePct}
+				{leftPageBg}
 			>
 				{#snippet leftPage()}
 					{#if spreadState.kind === 'entry'}
