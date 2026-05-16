@@ -203,10 +203,11 @@ function getSpreadIndex(): number {
 }
 const spreadIndex = $derived(getSpreadIndex());
 const spreadCount = $derived(entryDatePreviews.length + 2);
-// Cover: whole right page clickable. TOC: whole left page clickable.
-// Entry: no click zones — keyboard (arrow keys) and swipe only.
-const prevZonePct = $derived(spreadIndex === 1 ? 50 : 0);
-const nextZonePct = $derived(spreadIndex === 0 ? 50 : 0);
+// Cover: whole right page (front cover) is the click target to open.
+// TOC: whole left page (Ex Libris) clicks back to cover; narrow right margin clicks forward.
+// Entry: narrow margin strips on both sides; text area in between is unobstructed.
+const prevZonePct = $derived(spreadIndex === 0 ? 0 : spreadIndex === 1 ? 50 : 5);
+const nextZonePct = $derived(spreadIndex === 0 ? 50 : 5);
 const entryDate = $derived(spreadState.kind === 'entry' ? spreadState.date : null);
 const entryDates = $derived(new Set(entryDatePreviews.map((e) => e.entry_date)));
 
@@ -307,7 +308,7 @@ $effect(() => {
     splitPoints = points;
     const newSpreadCount = Math.floor(points.length / 2) + 1;
     if (entryPageSpread >= newSpreadCount) entryPageSpread = newSpreadCount - 1;
-  }, 300);
+  }, 50);
   return () => clearTimeout(timer);
 });
 
@@ -368,7 +369,7 @@ $effect(() => {
 			>
 				{#snippet leftPage()}
 					{#if spreadState.kind === 'cover'}
-						<CoverPage config={activeCover} username="" showTitle={false} showSettings={false} />
+						<!-- blank — front cover is the only thing visible on this spread -->
 					{:else if spreadState.kind === 'toc'}
 						<ExLibrisPage username={username} />
 					{:else if spreadState.kind === 'entry'}
