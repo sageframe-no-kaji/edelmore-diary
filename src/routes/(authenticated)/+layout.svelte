@@ -217,11 +217,8 @@ let splitPoints: number[] = $state([]);
 let entryPageSpread = $state(0);
 // biome-ignore lint/style/useConst: bind:this requires let
 let textareaEl: HTMLTextAreaElement | null = $state(null);
-// biome-ignore lint/style/useConst: bind:this requires let
-let rightTextareaEl: HTMLTextAreaElement | null = $state(null);
 let measureEl: HTMLTextAreaElement | null = null;
 let targetScrollTopLeft = $state(0);
-let targetScrollTopRight = $state(0);
 
 const entrySpreadCount = $derived(Math.floor(splitPoints.length / 2) + 1);
 const hasMoreContent = $derived(entryPageSpread < entrySpreadCount - 1);
@@ -259,7 +256,6 @@ $effect(() => {
     splitPoints = [];
     entryPageSpread = 0;
     targetScrollTopLeft = 0;
-    targetScrollTopRight = 0;
   });
 });
 
@@ -318,7 +314,7 @@ $effect(() => {
 $effect(() => {
   const spread = entryPageSpread;
   const points = splitPoints;
-  /* v8 ignore next 22 */
+  /* v8 ignore next 16 */
   untrack(() => {
     if (!measureEl || !textareaEl) return;
     const c = content;
@@ -333,23 +329,12 @@ $effect(() => {
     measureEl!.value = c.slice(0, leftStart);
     // biome-ignore lint/style/noNonNullAssertion: guarded by null check above closure
     targetScrollTopLeft = leftStart === 0 ? 0 : measureEl!.scrollHeight;
-    const rightStart = points[spread * 2];
-    if (rightStart !== undefined) {
-      // biome-ignore lint/style/noNonNullAssertion: guarded by null check above closure
-      measureEl!.value = c.slice(0, rightStart);
-      // biome-ignore lint/style/noNonNullAssertion: guarded by null check above closure
-      targetScrollTopRight = measureEl!.scrollHeight;
-    }
   });
 });
 
 /* v8 ignore next 3 */
 $effect(() => {
   if (textareaEl) textareaEl.scrollTop = targetScrollTopLeft;
-});
-/* v8 ignore next 3 */
-$effect(() => {
-  if (rightTextareaEl) rightTextareaEl.scrollTop = targetScrollTopRight;
 });
 </script>
 
@@ -410,18 +395,16 @@ $effect(() => {
 					{/if}
 				{/snippet}
 				{#snippet rightPage()}
-					{#if spreadState.kind === 'entry' && entryPageSpread * 2 < splitPoints.length}
-						<div class="relative h-full flex flex-col px-10 py-8 font-serif">
-							<textarea
-								bind:this={rightTextareaEl}
-								bind:value={content}
-								onscroll={() => { if (rightTextareaEl) rightTextareaEl.scrollTop = targetScrollTopRight; }}
-								class="flex-1 w-full resize-none overflow-hidden bg-transparent text-ink-900 font-serif text-sm leading-relaxed outline-none"
-							></textarea>
-							{#if hasMoreContent}
-								<div class="absolute bottom-2 right-3 text-xs text-stone-400 italic pointer-events-none">→ continued</div>
-							{/if}
-						</div>
+					{#if spreadState.kind === 'entry'}
+						{@const rightStart = splitPoints[entryPageSpread * 2]}
+						{#if rightStart !== undefined}
+							<div class="relative h-full overflow-hidden px-10 py-8 font-serif text-sm leading-relaxed text-ink-900">
+								<p class="whitespace-pre-wrap m-0">{content.slice(rightStart)}</p>
+								{#if hasMoreContent}
+									<div class="absolute bottom-2 right-3 text-xs text-stone-400 italic pointer-events-none">→ continued</div>
+								{/if}
+							</div>
+						{/if}
 					{:else if spreadState.kind === 'toc'}
 						<TocPage entries={entryDatePreviews} onNavigate={navigateTo} />
 					{:else if spreadState.kind === 'cover'}
