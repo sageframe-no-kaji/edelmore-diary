@@ -185,7 +185,18 @@ $effect(() => {
 		flex: 1;
 		position: relative;
 		overflow: hidden;
-		background: #fdf6e3;
+		background: #f5e9cf;
+	}
+
+	.page::before,
+	.leaf-face::before {
+		content: '';
+		position: absolute;
+		inset: 0;
+		background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='p'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65 0.55' numOctaves='4' seed='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23p)' opacity='0.07'/%3E%3C/svg%3E");
+		background-size: 300px 300px;
+		pointer-events: none;
+		z-index: 0;
 	}
 
 	.page-left {
@@ -231,7 +242,7 @@ $effect(() => {
 		position: absolute;
 		inset: 0;
 		backface-visibility: hidden;
-		background: #fdf6e3;
+		background: #f5e9cf;
 	}
 
 	.leaf-front {
