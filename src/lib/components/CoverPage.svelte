@@ -5,166 +5,84 @@ type Props = {
   config: CoverConfig;
   username: string;
   showSettings?: boolean;
+  showTitle?: boolean;
 };
 
-const { config, username, showSettings = false }: Props = $props();
-
-const FLOWER_POSITIONS: [number, number][] = [
-  [150, 80],
-  [231, 114],
-  [265, 195],
-  [231, 276],
-  [150, 310],
-  [69, 276],
-  [35, 195],
-  [69, 114],
-];
-const PETAL_ROTATIONS = [0, 60, 120, 180, 240, 300];
+const { config, username, showSettings = false, showTitle = true }: Props = $props();
+const a = $derived(config.palette.accent);
 </script>
 
 <div
   class="cover"
-  style="background-color: {config.palette.background}; color: {config.palette.text};"
+  style="background-color: {config.palette.background};"
 >
-  <!-- Texture layer -->
-  {#if config.texture !== 'none'}
-    <svg
-      class="abs-fill"
-      xmlns="http://www.w3.org/2000/svg"
-      width="100%"
-      height="100%"
-      aria-hidden="true"
-    >
-      <defs>
-        {#if config.texture === 'linen'}
-          <pattern
-            id="linen-{config.id}"
-            patternUnits="userSpaceOnUse"
-            width="4"
-            height="4"
-          >
-            <line
-              x1="0"
-              y1="0"
-              x2="4"
-              y2="4"
-              stroke={config.palette.accent}
-              stroke-width="0.35"
-              opacity="0.25"
-            />
-            <line
-              x1="4"
-              y1="0"
-              x2="0"
-              y2="4"
-              stroke={config.palette.accent}
-              stroke-width="0.35"
-              opacity="0.15"
-            />
-          </pattern>
-        {:else}
-          <filter id="noise-{config.id}" x="0" y="0" width="100%" height="100%">
-            <feTurbulence
-              type="fractalNoise"
-              baseFrequency={config.texture === 'cotton' ? '0.45' : '0.65'}
-              numOctaves="3"
-              stitchTiles="stitch"
-            />
-            <feColorMatrix type="saturate" values="0" />
-          </filter>
-        {/if}
-      </defs>
-      {#if config.texture === 'linen'}
-        <rect width="100%" height="100%" fill="url(#linen-{config.id})" />
-      {:else}
-        <rect width="100%" height="100%" filter="url(#noise-{config.id})" opacity="0.07" />
-      {/if}
-    </svg>
-  {/if}
+  <!-- Leather depth: subtle radial variation that works on any dark base -->
+  <div class="leather-sheen"></div>
 
-  <!-- Ornament layer -->
+  <!-- Fine grain texture -->
+  <svg class="abs-fill" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <filter id="grain-{config.id}" x="0" y="0" width="100%" height="100%" color-interpolation-filters="linearRGB">
+        <feTurbulence type="fractalNoise" baseFrequency="0.72 0.62" numOctaves="4" seed="5" stitchTiles="stitch" result="noise"/>
+        <feColorMatrix in="noise" type="saturate" values="0" result="grey"/>
+        <feBlend in="SourceGraphic" in2="grey" mode="soft-light" result="blended"/>
+        <feComposite in="blended" in2="SourceGraphic" operator="in"/>
+      </filter>
+    </defs>
+    <rect width="100%" height="100%" filter="url(#grain-{config.id})" opacity="0.22"/>
+  </svg>
+
+  <!-- Gold tooled border: preserveAspectRatio="none" so rules always fill the page -->
   <svg
     class="abs-fill"
     viewBox="0 0 300 400"
-    preserveAspectRatio="xMidYMid meet"
-    xmlns="http://www.w3.org/2000/svg"
+    preserveAspectRatio="none"
     aria-hidden="true"
+    xmlns="http://www.w3.org/2000/svg"
   >
-    {#if config.ornament === 'simple-border'}
-      <rect x="18" y="18" width="264" height="364" fill="none" stroke={config.palette.accent} stroke-width="2" />
-      <rect x="25" y="25" width="250" height="350" fill="none" stroke={config.palette.accent} stroke-width="0.75" />
-      <polygon points="18,10 26,18 18,26 10,18" fill={config.palette.accent} />
-      <polygon points="282,10 290,18 282,26 274,18" fill={config.palette.accent} />
-      <polygon points="18,390 26,382 18,374 10,382" fill={config.palette.accent} />
-      <polygon points="282,390 290,382 282,374 274,382" fill={config.palette.accent} />
-      <circle cx="150" cy="18" r="2.5" fill={config.palette.accent} />
-      <circle cx="150" cy="382" r="2.5" fill={config.palette.accent} />
-      <circle cx="18" cy="200" r="2.5" fill={config.palette.accent} />
-      <circle cx="282" cy="200" r="2.5" fill={config.palette.accent} />
+    <!-- Triple nested rule -->
+    <rect x="14" y="14" width="272" height="372" fill="none" stroke="{a}" stroke-width="1.5"/>
+    <rect x="20" y="20" width="260" height="360" fill="none" stroke="{a}" stroke-width="0.7"/>
+    <rect x="26" y="26" width="248" height="348" fill="none" stroke="{a}" stroke-width="0.5"/>
 
-    {:else if config.ornament === 'corner-flourish'}
-      <!-- Top-left -->
-      <path d="M 50,22 L 22,22 L 22,50" fill="none" stroke={config.palette.accent} stroke-width="2" stroke-linecap="round" />
-      <path d="M 22,50 Q 22,65 37,65" fill="none" stroke={config.palette.accent} stroke-width="1" stroke-linecap="round" />
-      <circle cx="50" cy="22" r="2.5" fill={config.palette.accent} />
-      <!-- Top-right -->
-      <path d="M 250,22 L 278,22 L 278,50" fill="none" stroke={config.palette.accent} stroke-width="2" stroke-linecap="round" />
-      <path d="M 278,50 Q 278,65 263,65" fill="none" stroke={config.palette.accent} stroke-width="1" stroke-linecap="round" />
-      <circle cx="250" cy="22" r="2.5" fill={config.palette.accent} />
-      <!-- Bottom-left -->
-      <path d="M 50,378 L 22,378 L 22,350" fill="none" stroke={config.palette.accent} stroke-width="2" stroke-linecap="round" />
-      <path d="M 22,350 Q 22,335 37,335" fill="none" stroke={config.palette.accent} stroke-width="1" stroke-linecap="round" />
-      <circle cx="50" cy="378" r="2.5" fill={config.palette.accent} />
-      <!-- Bottom-right -->
-      <path d="M 250,378 L 278,378 L 278,350" fill="none" stroke={config.palette.accent} stroke-width="2" stroke-linecap="round" />
-      <path d="M 278,350 Q 278,335 263,335" fill="none" stroke={config.palette.accent} stroke-width="1" stroke-linecap="round" />
-      <circle cx="250" cy="378" r="2.5" fill={config.palette.accent} />
+    <!-- Corner diamonds on outer rule -->
+    <path d="M14,8 L20,14 L14,20 L8,14Z"       fill="{a}"/>
+    <path d="M286,8 L292,14 L286,20 L280,14Z"   fill="{a}"/>
+    <path d="M14,380 L20,386 L14,392 L8,386Z"   fill="{a}"/>
+    <path d="M286,380 L292,386 L286,392 L280,386Z" fill="{a}"/>
 
-    {:else if config.ornament === 'floral-wreath'}
-      {#each FLOWER_POSITIONS as [fx, fy]}
-        <g transform="translate({fx},{fy})">
-          {#each PETAL_ROTATIONS as rot}
-            <ellipse
-              rx="2.5"
-              ry="6"
-              fill={config.palette.accent}
-              opacity="0.72"
-              transform="rotate({rot})"
-            />
-          {/each}
-          <circle r="3" fill={config.palette.accent} />
-        </g>
-      {/each}
+    <!-- Mid-edge marks -->
+    <path d="M150,10 L153,14 L150,18 L147,14Z"  fill="{a}"/>
+    <path d="M150,382 L153,386 L150,390 L147,386Z" fill="{a}"/>
+    <path d="M10,200 L14,203 L18,200 L14,197Z"  fill="{a}"/>
+    <path d="M282,200 L286,203 L290,200 L286,197Z" fill="{a}"/>
 
-    {:else if config.ornament === 'vine-border'}
-      <!-- Top vine -->
-      <path d="M 28,38 Q 62,22 90,38 Q 118,54 150,38 Q 182,22 210,38 Q 238,54 272,38" fill="none" stroke={config.palette.accent} stroke-width="1.3" stroke-linecap="round" />
-      <!-- Bottom vine -->
-      <path d="M 28,362 Q 62,378 90,362 Q 118,346 150,362 Q 182,378 210,362 Q 238,346 272,362" fill="none" stroke={config.palette.accent} stroke-width="1.3" stroke-linecap="round" />
-      <!-- Left vine -->
-      <path d="M 28,38 Q 12,80 28,110 Q 44,140 28,170 Q 12,200 28,230 Q 44,260 28,290 Q 12,320 28,362" fill="none" stroke={config.palette.accent} stroke-width="1.3" stroke-linecap="round" />
-      <!-- Right vine -->
-      <path d="M 272,38 Q 288,80 272,110 Q 256,140 272,170 Q 288,200 272,230 Q 256,260 272,290 Q 288,320 272,362" fill="none" stroke={config.palette.accent} stroke-width="1.3" stroke-linecap="round" />
-      <!-- Leaf diamonds at wave peaks -->
-      <polygon points="150,31 155,38 150,45 145,38" fill={config.palette.accent} opacity="0.7" />
-      <polygon points="90,31 95,38 90,45 85,38" fill={config.palette.accent} opacity="0.5" />
-      <polygon points="210,31 215,38 210,45 205,38" fill={config.palette.accent} opacity="0.5" />
-      <polygon points="150,355 155,362 150,369 145,362" fill={config.palette.accent} opacity="0.7" />
-      <polygon points="90,355 95,362 90,369 85,362" fill={config.palette.accent} opacity="0.5" />
-      <polygon points="210,355 215,362 210,369 205,362" fill={config.palette.accent} opacity="0.5" />
-    {/if}
+    <!-- Inner corner L-brackets -->
+    <path d="M26,44 L26,26 L44,26"   fill="none" stroke="{a}" stroke-width="0.9" stroke-linecap="round"/>
+    <path d="M274,44 L274,26 L256,26" fill="none" stroke="{a}" stroke-width="0.9" stroke-linecap="round"/>
+    <path d="M26,356 L26,374 L44,374" fill="none" stroke="{a}" stroke-width="0.9" stroke-linecap="round"/>
+    <path d="M274,356 L274,374 L256,374" fill="none" stroke="{a}" stroke-width="0.9" stroke-linecap="round"/>
   </svg>
 
-  <!-- Title text -->
-  <div class="cover-text">
-    <p class="cover-name" style="color: {config.palette.text};">{username}</p>
-    <p class="cover-subhead" style="color: {config.palette.subtext};">Diary</p>
-    {#if showSettings}
-      <a href="/settings" class="cover-settings" aria-label="Choose a cover">
-        <img src="/edelweiss.svg" width="26" height="26" alt="" />
-      </a>
-    {/if}
-  </div>
+  {#if showTitle}
+    <div class="title-block">
+      <p class="name" style="color: {config.palette.text};">{username}</p>
+      <div class="rule" style="background: {config.palette.accent};"></div>
+      <p class="diary" style="color: {config.palette.subtext};">D I A R Y</p>
+      {#if showSettings}
+        <a href="/settings" class="settings-link" aria-label="Choose cover">
+          <img src="/edelweiss.svg" width="24" height="24" alt="" />
+        </a>
+      {/if}
+    </div>
+  {:else}
+    <!-- Back cover: centred diamond motif only -->
+    <svg class="back-motif" viewBox="0 0 48 48" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
+      <path d="M24,2 L46,24 L24,46 L2,24Z"   fill="none" stroke="{a}" stroke-width="1.2"/>
+      <path d="M24,9 L39,24 L24,39 L9,24Z"   fill="none" stroke="{a}" stroke-width="0.6"/>
+      <circle cx="24" cy="24" r="2.5" fill="{a}"/>
+    </svg>
+  {/if}
 </div>
 
 <style>
@@ -178,50 +96,77 @@ const PETAL_ROTATIONS = [0, 60, 120, 180, 240, 300];
     justify-content: center;
   }
 
-  .abs-fill {
+  .leather-sheen {
     position: absolute;
     inset: 0;
+    background-image:
+      radial-gradient(ellipse 80% 55% at 30% 25%, rgba(255, 220, 140, 0.07) 0%, transparent 55%),
+      radial-gradient(ellipse 65% 70% at 68% 70%, rgba(0, 0, 0, 0.28) 0%, transparent 48%),
+      radial-gradient(ellipse 45% 40% at 55% 48%, rgba(0, 0, 0, 0.09) 0%, transparent 40%),
+      radial-gradient(ellipse 30% 25% at 18% 78%, rgba(255, 180, 80, 0.04) 0%, transparent 35%);
     pointer-events: none;
   }
 
-  .cover-text {
+  .abs-fill {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+  }
+
+  .title-block {
     position: relative;
     z-index: 1;
     text-align: center;
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 0.4rem;
+    gap: 0.5rem;
   }
 
-  .cover-name {
+  .name {
     font-family: 'EB Garamond', Georgia, serif;
-    font-size: 2rem;
+    font-size: clamp(1rem, 3.2vw, 2rem);
     font-weight: 500;
-    letter-spacing: 0.18em;
+    letter-spacing: 0.28em;
     text-transform: uppercase;
     margin: 0;
+    line-height: 1;
   }
 
-  .cover-subhead {
+  .rule {
+    width: 2.5rem;
+    height: 1px;
+    opacity: 0.65;
+  }
+
+  .diary {
     font-family: 'EB Garamond', Georgia, serif;
-    font-size: 0.85rem;
-    font-style: italic;
-    letter-spacing: 0.35em;
-    text-transform: uppercase;
+    font-size: clamp(0.5rem, 1.3vw, 0.75rem);
+    letter-spacing: 0.55em;
     margin: 0;
+    line-height: 1;
   }
 
-  .cover-settings {
-    margin-top: 1rem;
-    opacity: 0.55;
+  .settings-link {
+    margin-top: 0.75rem;
+    opacity: 0.45;
     transition: opacity 0.2s;
     display: flex;
     align-items: center;
     justify-content: center;
   }
 
-  .cover-settings:hover {
-    opacity: 1;
+  .settings-link:hover {
+    opacity: 0.9;
+  }
+
+  .back-motif {
+    position: relative;
+    z-index: 1;
+    width: 44px;
+    height: 44px;
+    opacity: 0.55;
   }
 </style>

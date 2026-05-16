@@ -16,8 +16,6 @@ type Props = {
   // whole right page is a click target; entry state keeps them narrow.
   prevZonePct?: number;
   nextZonePct?: number;
-  // When set, left page renders with this background and no centre border.
-  leftPageBg?: string;
   leftPage?: Snippet;
   rightPage?: Snippet;
 };
@@ -34,7 +32,6 @@ const {
   flipTriggerDir = 'next',
   prevZonePct = 12,
   nextZonePct = 12,
-  leftPageBg,
   leftPage,
   rightPage,
 }: Props = $props();
@@ -129,10 +126,7 @@ $effect(() => {
 		{/if}
 
 		<!-- Left page -->
-		<div
-			class="page page-left"
-			style={leftPageBg != null ? `background: ${leftPageBg}; border-right: none;` : ''}
-		>
+		<div class="page page-left">
 			{#if leftPage}{@render leftPage()}{/if}
 		</div>
 

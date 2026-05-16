@@ -3,6 +3,7 @@ import { goto } from '$app/navigation';
 import { page } from '$app/stores';
 import CalendarModal from '$lib/components/CalendarModal.svelte';
 import CoverPage from '$lib/components/CoverPage.svelte';
+import ExLibrisPage from '$lib/components/ExLibrisPage.svelte';
 import Spread from '$lib/components/Spread.svelte';
 import TocPage from '$lib/components/TocPage.svelte';
 import { findCover } from '$lib/covers.js';
@@ -42,13 +43,6 @@ const coverId = $derived(($page.data as any).user?.cover_id ?? 'meadow');
 const activeCover = $derived(findCover(coverId));
 // biome-ignore lint/suspicious/noExplicitAny: layout data merged into $page.data
 const username = $derived(($page.data as any).user?.username ?? '');
-
-// Flip zone widths and left page background for cover state.
-const prevZonePct = $derived(spreadState.kind === 'cover' ? 0 : 12);
-const nextZonePct = $derived(spreadState.kind === 'cover' ? 50 : 12);
-const leftPageBg = $derived(
-  spreadState.kind === 'cover' ? activeCover.palette.background : undefined
-);
 
 // Sync when SvelteKit navigates to a new [date] route.
 $effect(() => {
@@ -209,6 +203,10 @@ function getSpreadIndex(): number {
 }
 const spreadIndex = $derived(getSpreadIndex());
 const spreadCount = $derived(entryDatePreviews.length + 2);
+// Cover: right page = front cover (whole right page clickable).
+// TOC: left page = Ex Libris (whole left page flips back to cover).
+const prevZonePct = $derived(spreadIndex === 1 ? 50 : 12);
+const nextZonePct = $derived(spreadState.kind === 'cover' ? 50 : 12);
 const entryDate = $derived(spreadState.kind === 'entry' ? spreadState.date : null);
 const entryDates = $derived(new Set(entryDatePreviews.map((e) => e.entry_date)));
 
@@ -382,10 +380,13 @@ $effect(() => {
 				{flipTriggerDir}
 				{prevZonePct}
 				{nextZonePct}
-				{leftPageBg}
 			>
 				{#snippet leftPage()}
-					{#if spreadState.kind === 'entry'}
+					{#if spreadState.kind === 'cover'}
+						<CoverPage config={activeCover} username="" showTitle={false} showSettings={false} />
+					{:else if spreadState.kind === 'toc'}
+						<ExLibrisPage username={username} />
+					{:else if spreadState.kind === 'entry'}
 						<div class="h-full flex flex-col px-10 py-8 font-serif">
 							<button
 								type="button"
