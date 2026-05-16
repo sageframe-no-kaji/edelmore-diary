@@ -10,14 +10,29 @@ export const load: PageServerLoad = async ({ params, locals }) => {
   const userId = locals.user!.id;
   const entry = getEntry(locals.db, userId, params.date);
 
+  const todayStr = todayIso();
+
   // prevDate/nextDate are adjacent diary entries, not calendar days.
   // listEntryDates returns DESC (most recent first). idx === -1 means no entry for this date.
   const dates = listEntryDates(locals.db, userId);
   const idx = dates.indexOf(params.date);
-  const prevDate = idx === -1 ? null : idx < dates.length - 1 ? dates[idx + 1] : null;
-  const nextDate = idx === -1 ? null : idx > 0 ? dates[idx - 1] : null;
+
+  // For a date with no entry (idx === -1), find the nearest real entries before/after.
+  const prevDate =
+    idx === -1
+      ? (dates.find((d) => d < params.date) ?? null)
+      : idx < dates.length - 1
+        ? dates[idx + 1]
+        : null;
+  // nextDate: the newer adjacent entry, or today if this is the most recent entry and today is later.
+  const nextDate =
+    idx === -1 ? null : idx > 0 ? dates[idx - 1] : params.date < todayStr ? todayStr : null;
 
   const entryDatePreviews = listEntryDatesWithPreview(locals.db, userId, { ascending: true });
+  // Always include today so the blank page is accessible even before the first keystroke.
+  if (!entryDatePreviews.find((e) => e.entry_date === todayStr)) {
+    entryDatePreviews.push({ entry_date: todayStr, preview: '' });
+  }
 
   return {
     date: params.date,

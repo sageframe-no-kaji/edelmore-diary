@@ -83,14 +83,7 @@ $effect(() => {
   return () => clearTimeout(timer);
 });
 
-// --- Cascade flip state ---
-let flipDuration = $state(500);
-let cascadeRemaining = $state(0);
-let cascadeTargetDate = $state<string | null>(null);
-let flipTrigger = $state(0);
-let flipTriggerDir = $state<'next' | 'prev'>('next');
-
-async function doNavigateTo(date: string) {
+async function navigateTo(date: string) {
   /* v8 ignore next 7 */
   const res = await fetch(`/api/entries/${date}`);
   if (res.ok) {
@@ -101,44 +94,7 @@ async function doNavigateTo(date: string) {
   await goto(`/${date}`);
 }
 
-async function navigateTo(date: string) {
-  const targetIdx = entryDatePreviews.findIndex((e) => e.entry_date === date);
-  // +2: cover (0) + toc (1) + entry spreads
-  const targetSpreadIdx = targetIdx >= 0 ? targetIdx + 2 : 2;
-  const delta = targetSpreadIdx - spreadIndex;
-
-  if (Math.abs(delta) <= 1) {
-    /* v8 ignore next */
-    await doNavigateTo(date);
-    return;
-  }
-
-  // Cascade: animate through intermediate pages, capped at ~1.5s total.
-  const steps = Math.min(Math.abs(delta) - 1, 18);
-  cascadeRemaining = steps;
-  cascadeTargetDate = date;
-  flipTriggerDir = delta > 0 ? 'next' : 'prev';
-  flipDuration = 80;
-  /* v8 ignore next */
-  flipTrigger += 1;
-}
-
 function onFlipNext() {
-  if (cascadeRemaining > 0) {
-    cascadeRemaining--;
-    if (cascadeRemaining === 0) {
-      flipDuration = 500;
-      const target = cascadeTargetDate ?? '/';
-      cascadeTargetDate = null;
-      /* v8 ignore next */
-      doNavigateTo(target);
-    } else {
-      /* v8 ignore next */
-      flipTrigger += 1;
-    }
-    return;
-  }
-
   if (spreadState.kind === 'cover') {
     spreadState = { kind: 'toc' };
   } else if (spreadState.kind === 'toc') {
@@ -155,21 +111,6 @@ function onFlipNext() {
 }
 
 function onFlipPrev() {
-  if (cascadeRemaining > 0) {
-    cascadeRemaining--;
-    if (cascadeRemaining === 0) {
-      flipDuration = 500;
-      const target = cascadeTargetDate ?? '/';
-      cascadeTargetDate = null;
-      /* v8 ignore next */
-      doNavigateTo(target);
-    } else {
-      /* v8 ignore next */
-      flipTrigger += 1;
-    }
-    return;
-  }
-
   if (spreadState.kind === 'entry') {
     if (entryPageSpread > 0) {
       entryPageSpread -= 1;
@@ -361,10 +302,7 @@ $effect(() => {
 				{canFlipNext}
 				{spreadIndex}
 				{spreadCount}
-				{flipDuration}
-				{flipTrigger}
-				{flipTriggerDir}
-				{prevZonePct}
+{prevZonePct}
 				{nextZonePct}
 			>
 				{#snippet leftPage()}
@@ -385,7 +323,11 @@ $effect(() => {
 							<textarea
 								bind:this={textareaEl}
 								bind:value={content}
-								onscroll={() => { if (textareaEl) textareaEl.scrollTop = targetScrollTopLeft; }}
+								oninput={() => {
+									requestAnimationFrame(() => {
+										if (textareaEl) textareaEl.scrollTop = targetScrollTopLeft;
+									});
+								}}
 								class="flex-1 w-full resize-none overflow-hidden bg-transparent text-ink-900 font-serif text-sm leading-relaxed outline-none"
 								placeholder="Begin writing…"
 							></textarea>
@@ -399,12 +341,16 @@ $effect(() => {
 					{#if spreadState.kind === 'entry'}
 						{@const rightStart = splitPoints[entryPageSpread * 2]}
 						{#if rightStart !== undefined}
-							<div class="absolute inset-0 overflow-hidden px-8 pt-5 pb-4 font-serif text-sm leading-relaxed text-ink-900">
-								<p class="whitespace-pre-wrap m-0">{content.slice(rightStart)}</p>
-								{#if hasMoreContent}
-									<div class="absolute bottom-2 right-3 text-xs text-stone-400 italic pointer-events-none">→ continued</div>
-								{/if}
-							</div>
+							<textarea
+								value={content.slice(rightStart)}
+								oninput={(e) => {
+									content = content.slice(0, rightStart) + e.currentTarget.value;
+								}}
+								class="absolute inset-0 w-full h-full resize-none overflow-hidden px-8 pt-5 pb-4 bg-transparent text-ink-900 font-serif text-sm leading-relaxed outline-none"
+							></textarea>
+							{#if hasMoreContent}
+								<div class="absolute bottom-2 right-3 text-xs text-stone-400 italic pointer-events-none">→ continued</div>
+							{/if}
 						{/if}
 					{:else if spreadState.kind === 'toc'}
 						<TocPage entries={entryDatePreviews} onNavigate={navigateTo} />
