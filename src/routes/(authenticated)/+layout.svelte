@@ -8,7 +8,7 @@ import Spread from '$lib/components/Spread.svelte';
 import TocPage from '$lib/components/TocPage.svelte';
 import { findCover } from '$lib/covers.js';
 import type { EntryDatePreview } from '$lib/db.js';
-import { findSplitIndex, fixWidowOrphan, snapToWordBreak } from '$lib/overflow.js';
+import { findSplitIndex, snapToWordBreak } from '$lib/overflow.js';
 import type { Snippet } from 'svelte';
 import { onMount, untrack } from 'svelte';
 
@@ -213,16 +213,6 @@ $effect(() => {
     const maxH = textareaEl.clientHeight;
     const points: number[] = [];
     let offset = 0;
-    // biome-ignore lint/style/noNonNullAssertion: guarded by null check above closure
-    measureEl!.value = 'A';
-    // biome-ignore lint/style/noNonNullAssertion: guarded by null check above closure
-    const singleLineH = measureEl!.scrollHeight;
-    const isSingleLine = (text: string): boolean => {
-      // biome-ignore lint/style/noNonNullAssertion: guarded by null check above closure
-      measureEl!.value = text;
-      // biome-ignore lint/style/noNonNullAssertion: guarded by null check above closure
-      return measureEl!.scrollHeight <= singleLineH * 1.2;
-    };
     while (offset < c.length) {
       const remaining = c.slice(offset);
       // biome-ignore lint/style/noNonNullAssertion: guarded by null check above closure
@@ -238,9 +228,7 @@ $effect(() => {
       if (relSplit === 0) break;
       const rawSplit = offset + relSplit;
       const snapped = snapToWordBreak(c, rawSplit);
-      const preFix = snapped > offset ? snapped : rawSplit;
-      const actualSplit = fixWidowOrphan(c, offset, preFix, isSingleLine);
-      if (actualSplit <= offset) break;
+      const actualSplit = snapped > offset ? snapped : rawSplit;
       points.push(actualSplit);
       offset = actualSplit;
     }
@@ -285,15 +273,13 @@ $effect(() => {
 					{:else if spreadState.kind === 'entry'}
 						{@const leftStart = entryPageSpread === 0 ? 0 : (splitPoints[entryPageSpread * 2 - 1] ?? 0)}
 						{@const leftEnd = splitPoints[entryPageSpread * 2]}
-						<div class="h-full flex flex-col px-8 pt-5 pb-8 font-serif">
+						<div class="relative h-full">
 							<button
 								type="button"
 								onclick={() => { showCalendar = true; }}
-								class="text-xs text-stone-400 mb-3 tracking-wide uppercase hover:text-ornament-gold transition-colors text-left shrink-0"
+								class="absolute top-5 left-8 z-10 text-xs text-stone-400 tracking-wide uppercase hover:text-ornament-gold transition-colors"
 								aria-label="Open calendar"
-							>
-								{($page.data as any).displayDate ?? ''}
-							</button>
+							>{($page.data as any).displayDate ?? ''}</button>
 							<textarea
 								bind:this={textareaEl}
 								value={content.slice(leftStart, leftEnd)}
@@ -301,11 +287,11 @@ $effect(() => {
 									const suffix = leftEnd !== undefined ? content.slice(leftEnd) : '';
 									content = content.slice(0, leftStart) + e.currentTarget.value + suffix;
 								}}
-								class="flex-1 w-full resize-none overflow-hidden bg-transparent text-ink-900 font-serif text-sm leading-relaxed outline-none"
+								class="absolute inset-0 w-full resize-none overflow-hidden px-8 pt-12 pb-8 bg-transparent text-ink-900 font-serif text-sm leading-relaxed outline-none"
 								placeholder="Begin writing…"
 							></textarea>
 							{#if saved}
-								<span class="text-xs text-stone-400 italic mt-1 shrink-0">Saved</span>
+								<span class="absolute bottom-2 left-8 z-10 text-xs text-stone-400 italic pointer-events-none">Saved</span>
 							{/if}
 						</div>
 					{/if}
@@ -321,7 +307,7 @@ $effect(() => {
 									const suffix = rightEnd !== undefined ? content.slice(rightEnd) : '';
 									content = content.slice(0, rightStart) + e.currentTarget.value + suffix;
 								}}
-								class="absolute inset-0 w-full h-full resize-none overflow-hidden px-8 pt-5 pb-8 bg-transparent text-ink-900 font-serif text-sm leading-relaxed outline-none"
+								class="absolute inset-0 w-full resize-none overflow-hidden px-8 pt-12 pb-8 bg-transparent text-ink-900 font-serif text-sm leading-relaxed outline-none"
 							></textarea>
 							{#if hasMoreContent}
 								<div class="absolute bottom-2 right-3 text-xs text-stone-400 italic pointer-events-none">→ continued</div>

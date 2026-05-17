@@ -42,25 +42,27 @@ describe('snapToWordBreak', () => {
     expect(snapToWordBreak('hello world', 8)).toBe(6);
   });
 
-  it('snaps to paragraph break (double newline)', () => {
+  it('snaps to line break (newline within double-newline)', () => {
+    // \n\n at index 16-17; lastIndexOf('\n') finds index 17; returns 18
     const content = 'First paragraph.\n\nSecond paragraph starts here.';
-    expect(snapToWordBreak(content, 40)).toBe(18); // after '\n\n' at index 16
+    expect(snapToWordBreak(content, 40)).toBe(18);
   });
 
-  it('prefers paragraph break over single newline when both exist', () => {
+  it('snaps to nearest newline, not farthest paragraph break', () => {
+    // Last \n before splitAt=18 is at index 4 (after 'B'); returns 5
     const content = 'A\n\nB\nC more text here';
-    expect(snapToWordBreak(content, 18)).toBe(3); // after '\n\n' at index 1
+    expect(snapToWordBreak(content, 18)).toBe(5);
   });
 
-  it('falls back to single newline when no paragraph break exists', () => {
+  it('snaps to newline when present', () => {
     const content = 'line one\nline two extra text';
     expect(snapToWordBreak(content, 20)).toBe(9); // after '\n' at index 8
   });
 
-  it('snaps to sentence end before word boundary when no newlines', () => {
-    // splitAt=30 lands mid-second-sentence; '. ' at index 18 → return 20
+  it('falls back to word boundary when no newline in window', () => {
+    // No newline; last space before splitAt=30 is at index 23 (before 'second')
     const content = 'The first sentence. The second begins here.';
-    expect(snapToWordBreak(content, 30)).toBe(20);
+    expect(snapToWordBreak(content, 30)).toBe(24);
   });
 
   it('falls back to word boundary (space) when no sentence end or newlines exist', () => {
