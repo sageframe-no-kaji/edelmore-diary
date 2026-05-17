@@ -24,16 +24,9 @@ const { entries, onNavigate }: Props = $props();
           <button
             type="button"
             onclick={() => onNavigate(entry.entry_date)}
-            class="w-full text-left group"
+            class="w-full text-left font-serif text-xs text-ink-900 hover:text-ornament-gold transition-colors"
           >
-            <span class="font-serif text-xs text-cream-600 block">
-              {formatDisplayDate(entry.entry_date)}
-            </span>
-            {#if entry.preview}
-              <span class="font-serif text-xs text-ink-900 group-hover:text-ornament-gold transition-colors">
-                {entry.preview}
-              </span>
-            {/if}
+            {formatDisplayDate(entry.entry_date)}
           </button>
         </li>
       {/each}

@@ -34,9 +34,8 @@ describe('[date] load', () => {
     expect(result.content).toBe('Hello diary.');
   });
 
-  it('allows future dates', async () => {
-    const result = await load(makeEvent('2099-12-31') as any);
-    expect(result?.date).toBe('2099-12-31');
+  it('redirects to today for a future date', async () => {
+    await expect(load(makeEvent('2099-12-31') as any)).rejects.toMatchObject({ status: 302 });
   });
 
   it('redirects to today for an invalid date string', async () => {
@@ -54,9 +53,9 @@ describe('[date] load', () => {
   });
 
   it('returns null nextDate when entry is today (nothing after)', async () => {
-    // todayIso() returns the real current date; use a future date so nextDate is null.
-    upsertEntry(db, userId, '2099-12-31', 'Far future.');
-    const result = (await load(makeEvent('2099-12-31') as any)) as any;
+    const today = new Date().toISOString().slice(0, 10);
+    upsertEntry(db, userId, today, 'Today.');
+    const result = (await load(makeEvent(today) as any)) as any;
     expect(result.nextDate).toBeNull();
   });
 

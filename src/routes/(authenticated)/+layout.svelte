@@ -298,6 +298,12 @@ $effect(() => {
 				{/snippet}
 				{#snippet rightPage()}
 					{#if spreadState.kind === 'entry'}
+						<!-- TOC link — center top of right page, sits within the pt-12 top margin -->
+						<button
+							type="button"
+							onclick={() => { spreadState = { kind: 'toc' }; }}
+							class="absolute top-5 left-1/2 -translate-x-1/2 z-10 text-xs text-stone-400 tracking-wide uppercase hover:text-ornament-gold transition-colors"
+						>TOC</button>
 						{@const rightStart = splitPoints[entryPageSpread * 2]}
 						{@const rightEnd = splitPoints[entryPageSpread * 2 + 1]}
 						{#if rightStart !== undefined}
