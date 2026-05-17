@@ -160,7 +160,6 @@ let entryPageSpread = $state(0);
 // biome-ignore lint/style/useConst: bind:this requires let
 let textareaEl: HTMLTextAreaElement | null = $state(null);
 let measureEl: HTMLTextAreaElement | null = null;
-let targetScrollTopLeft = $state(0);
 
 const entrySpreadCount = $derived(Math.floor(splitPoints.length / 2) + 1);
 const hasMoreContent = $derived(entryPageSpread < entrySpreadCount - 1);
@@ -197,7 +196,6 @@ $effect(() => {
   untrack(() => {
     splitPoints = [];
     entryPageSpread = 0;
-    targetScrollTopLeft = 0;
   });
 });
 
@@ -252,32 +250,6 @@ $effect(() => {
   }, 50);
   return () => clearTimeout(timer);
 });
-
-$effect(() => {
-  const spread = entryPageSpread;
-  const points = splitPoints;
-  /* v8 ignore next 16 */
-  untrack(() => {
-    if (!measureEl || !textareaEl) return;
-    const c = content;
-    const style = getComputedStyle(textareaEl);
-    measureEl.style.width = style.width;
-    measureEl.style.height = style.height;
-    measureEl.style.font = style.font;
-    measureEl.style.lineHeight = style.lineHeight;
-    measureEl.style.padding = style.padding;
-    const leftStart = spread === 0 ? 0 : (points[spread * 2 - 1] ?? 0);
-    // biome-ignore lint/style/noNonNullAssertion: guarded by null check above closure
-    measureEl!.value = c.slice(0, leftStart);
-    // biome-ignore lint/style/noNonNullAssertion: guarded by null check above closure
-    targetScrollTopLeft = leftStart === 0 ? 0 : measureEl!.scrollHeight;
-  });
-});
-
-/* v8 ignore next 3 */
-$effect(() => {
-  if (textareaEl) textareaEl.scrollTop = targetScrollTopLeft;
-});
 </script>
 
 <!-- Full-height book container -->
@@ -311,6 +283,8 @@ $effect(() => {
 					{:else if spreadState.kind === 'toc'}
 						<ExLibrisPage username={username} />
 					{:else if spreadState.kind === 'entry'}
+						{@const leftStart = entryPageSpread === 0 ? 0 : (splitPoints[entryPageSpread * 2 - 1] ?? 0)}
+						{@const leftEnd = splitPoints[entryPageSpread * 2]}
 						<div class="h-full flex flex-col px-8 pt-5 pb-8 font-serif">
 							<button
 								type="button"
@@ -322,11 +296,10 @@ $effect(() => {
 							</button>
 							<textarea
 								bind:this={textareaEl}
-								bind:value={content}
-								oninput={() => {
-									requestAnimationFrame(() => {
-										if (textareaEl) textareaEl.scrollTop = targetScrollTopLeft;
-									});
+								value={content.slice(leftStart, leftEnd)}
+								oninput={(e) => {
+									const suffix = leftEnd !== undefined ? content.slice(leftEnd) : '';
+									content = content.slice(0, leftStart) + e.currentTarget.value + suffix;
 								}}
 								class="flex-1 w-full resize-none overflow-hidden bg-transparent text-ink-900 font-serif text-sm leading-relaxed outline-none"
 								placeholder="Begin writing…"

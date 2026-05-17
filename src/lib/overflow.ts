@@ -20,22 +20,26 @@ export function findSplitIndex(content: string, measure: (n: number) => boolean)
 /**
  * Snaps a character-level split point backward to the nearest paragraph break (\n\n),
  * line break (\n), sentence end (. ! ?), or word boundary ( ).
+ * Only looks back SNAP_WINDOW chars so a distant paragraph break can't pull the split
+ * hundreds of characters early and leave a huge gap on the page.
  * Returns splitAt unchanged if no suitable break precedes it.
  */
+const SNAP_WINDOW = 300;
 export function snapToWordBreak(content: string, splitAt: number): number {
-  const before = content.slice(0, splitAt);
+  const windowStart = Math.max(0, splitAt - SNAP_WINDOW);
+  const before = content.slice(windowStart, splitAt);
   const paraBreak = before.lastIndexOf('\n\n');
-  if (paraBreak >= 0) return paraBreak + 2;
+  if (paraBreak >= 0) return windowStart + paraBreak + 2;
   const lineBreak = before.lastIndexOf('\n');
-  if (lineBreak >= 0) return lineBreak + 1;
+  if (lineBreak >= 0) return windowStart + lineBreak + 1;
   const sentenceEnd = Math.max(
     before.lastIndexOf('. '),
     before.lastIndexOf('! '),
     before.lastIndexOf('? ')
   );
-  if (sentenceEnd >= 0) return sentenceEnd + 2;
+  if (sentenceEnd >= 0) return windowStart + sentenceEnd + 2;
   const wordBreak = before.lastIndexOf(' ');
-  if (wordBreak >= 0) return wordBreak + 1;
+  if (wordBreak >= 0) return windowStart + wordBreak + 1;
   return splitAt;
 }
 
