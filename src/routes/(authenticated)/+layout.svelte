@@ -311,7 +311,7 @@ $effect(() => {
 					{:else if spreadState.kind === 'toc'}
 						<ExLibrisPage username={username} />
 					{:else if spreadState.kind === 'entry'}
-						<div class="h-full flex flex-col px-8 pt-5 pb-4 font-serif">
+						<div class="h-full flex flex-col px-8 pt-5 pb-8 font-serif">
 							<button
 								type="button"
 								onclick={() => { showCalendar = true; }}
@@ -346,7 +346,7 @@ $effect(() => {
 								oninput={(e) => {
 									content = content.slice(0, rightStart) + e.currentTarget.value;
 								}}
-								class="absolute inset-0 w-full h-full resize-none overflow-hidden px-8 pt-5 pb-4 bg-transparent text-ink-900 font-serif text-sm leading-relaxed outline-none"
+								class="absolute inset-0 w-full h-full resize-none overflow-hidden px-8 pt-5 pb-8 bg-transparent text-ink-900 font-serif text-sm leading-relaxed outline-none"
 							></textarea>
 							{#if hasMoreContent}
 								<div class="absolute bottom-2 right-3 text-xs text-stone-400 italic pointer-events-none">→ continued</div>
