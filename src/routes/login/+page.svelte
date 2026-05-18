@@ -1,9 +1,10 @@
 <script lang="ts">
+import { untrack } from 'svelte';
 import type { ActionData, PageData } from './$types';
 
 const { data, form }: { data: PageData; form: ActionData } = $props();
 
-let selectedUser = $state('');
+let selectedUser = $state(untrack(() => data.users[0]?.username ?? ''));
 let pin = $state('');
 
 function selectUser(name: string) {

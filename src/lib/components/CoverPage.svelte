@@ -28,7 +28,6 @@ const {
   {:else}
     <div class="title-block">
       <p class="name">{username}</p>
-      <div class="rule"></div>
       <p class="diary">{diaryTitle}</p>
       {#if showSettings}
         <button
@@ -68,7 +67,10 @@ const {
 
   .title-block {
     position: absolute;
-    inset: 17% 14% 18% 14%;
+    left: 56%;
+    top: 50%;
+    width: 62%;
+    transform: translate(-50%, -50%);
     z-index: 1;
     text-align: center;
     display: flex;
@@ -83,7 +85,7 @@ const {
     font-size: clamp(1.5rem, 11cqw, 5rem);
     font-weight: 500;
     letter-spacing: 0.28em;
-    padding-left: 0.28em;
+    padding-left: 0;
     text-transform: uppercase;
     margin: 0;
     line-height: 1;
@@ -93,18 +95,11 @@ const {
       0 -1px 0 rgba(255, 210, 80, 0.35);
   }
 
-  .rule {
-    width: min(12rem, 60cqw);
-    height: 1px;
-    background: #c8a84b;
-    opacity: 0.65;
-  }
-
   .diary {
     font-family: 'EB Garamond', Georgia, serif;
     font-size: clamp(0.8rem, 4.4cqw, 2rem);
     letter-spacing: 0.55em;
-    padding-left: 0.55em;
+    padding-left: 0;
     margin: 0;
     line-height: 1;
     color: #c8a84b;
@@ -115,10 +110,13 @@ const {
 
   .settings-link {
     margin-top: clamp(0.4rem, 2cqw, 1.2rem);
+    padding-left: 0;
     opacity: 0.7;
     background: transparent;
     border: none;
-    padding: 0;
+    padding-top: 0;
+    padding-right: 0;
+    padding-bottom: 0;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -127,14 +125,15 @@ const {
 
   .press-link {
     position: absolute;
-    left: 50%;
+    left: 46.5%;
     bottom: 4.5%;
     transform: translateX(-50%);
     font-family: 'EB Garamond', Georgia, serif;
-    font-size: clamp(1.2rem, 3cqw, 1.9rem);
+    font-size: clamp(0.72rem, 1.8cqw, 1.14rem);
     color: #c8a84b;
     text-decoration: none;
     letter-spacing: 0.16em;
+    white-space: nowrap;
     text-transform: uppercase;
     text-shadow:
       0 1px 2px rgba(0, 0, 0, 0.8),

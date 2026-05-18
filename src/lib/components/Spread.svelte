@@ -60,7 +60,7 @@ $effect(() => {
 <div class="spread-container">
 	<div class="spread">
 		<!-- Page-edge stacks (decorative) -->
-		{#if leftLayers > 0}
+		{#if leftLayers > 0 && !hideLeftPage}
 			<div class="stack stack-left" aria-hidden="true">
 				{#each { length: leftLayers } as _, i}
 					<div class="stack-leaf" style="left: {-(i + 1) * 2}px; z-index: {-i}"></div>
@@ -91,7 +91,9 @@ $effect(() => {
 			<button
 				type="button"
 				class="flip-zone flip-zone-prev"
-				style="left: -{overhangRem}rem; width: calc({overhangRem}rem + {prevZonePct}%)"
+				style={hideLeftPage
+					? `left: calc(50% - ${overhangRem}rem); width: calc(${overhangRem}rem + ${prevZonePct}%);`
+					: `left: -${overhangRem}rem; width: calc(${overhangRem}rem + ${prevZonePct}%);`}
 				aria-label="Previous page"
 				disabled={!canFlipPrev}
 				onclick={onFlipPrev}

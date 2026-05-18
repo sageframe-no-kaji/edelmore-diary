@@ -127,11 +127,7 @@ function onFlipNext() {
 
 function onFlipPrev() {
 	if (spreadState.kind === 'backCover') {
-		if (entryDatePreviews.length > 0) {
-			navigateTo(entryDatePreviews[0].entry_date);
-		} else {
-			spreadState = { kind: 'toc' };
-		}
+		void navigateTo(todayIso());
 		return;
 	}
   if (spreadState.kind === 'entry') {
@@ -204,7 +200,7 @@ const spreadCount = $derived(entryDatePreviews.length + 3);
 // Entry: narrow margin strips on both sides; text area in between is unobstructed.
 function computePrevZonePct(): number {
   if (spreadState.kind === 'settings') return 0;
-	if (spreadState.kind === 'backCover') return 5;
+	if (spreadState.kind === 'backCover') return 8;
   if (spreadIndex === 0) return 0;
   if (spreadIndex === 1) return 50;
   return 5;
