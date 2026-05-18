@@ -77,12 +77,12 @@ $effect(() => {
 		{/if}
 
 		<!-- Left page -->
-		<div class="page page-left" style={hideLeftPage ? 'visibility:hidden;border-right:none' : ''}>
+		<div class="page page-left" style={hideLeftPage ? 'visibility:hidden;background:transparent;border-right:none' : ''}>
 			{#if leftPage}{@render leftPage()}{/if}
 		</div>
 
 		<!-- Right page -->
-		<div class="page page-right">
+		<div class="page page-right" style={hideLeftPage ? 'background:transparent' : ''}>
 			{#if rightPage}{@render rightPage()}{/if}
 		</div>
 

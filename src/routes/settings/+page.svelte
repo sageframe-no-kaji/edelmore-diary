@@ -114,7 +114,7 @@ const nextSize = $derived(FONT_STEPS[FONT_STEPS.indexOf(currentSize) + 1] ?? nul
     min-height: 100vh;
     background-image: url('/background.png');
     background-repeat: repeat;
-    background-size: auto;
+    background-size: 627px 627px;
     display: flex;
     flex-direction: column;
     padding: 2rem 1.5rem;
