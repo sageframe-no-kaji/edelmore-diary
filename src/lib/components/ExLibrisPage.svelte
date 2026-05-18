@@ -41,10 +41,8 @@ const { username }: Props = $props();
 
   <!-- Bookplate content -->
   <div class="plate">
-    <p class="ex-libris">Ex Libris</p>
-    <div class="rule"></div>
+    <img src="/ex-libris.png" class="bookplate" alt="Ex libris" />
     <p class="owner">{username}</p>
-    <img src="/edelweiss.svg" class="icon" width="38" height="38" alt="" aria-hidden="true" />
   </div>
 </div>
 
@@ -58,6 +56,7 @@ const { username }: Props = $props();
     align-items: center;
     justify-content: center;
     overflow: hidden;
+    pointer-events: none;
   }
 
   .abs-fill {
@@ -72,42 +71,28 @@ const { username }: Props = $props();
     position: relative;
     z-index: 1;
     text-align: center;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 0.65rem;
-    padding: 0 2.5rem;
+    width: min(96%, 20rem);
+    padding: 0;
   }
 
-  .ex-libris {
-    font-family: 'EB Garamond', Georgia, serif;
-    font-size: clamp(0.55rem, 1.3vw, 0.7rem);
-    letter-spacing: 0.6em;
-    font-style: italic;
-    color: #5c3d1e;
-    margin: 0;
-    opacity: 0.75;
-  }
-
-  .rule {
-    width: 4rem;
-    height: 1px;
-    background: #5c3d1e;
-    opacity: 0.4;
+  .bookplate {
+    width: 100%;
+    height: auto;
+    display: block;
   }
 
   .owner {
-    font-family: 'EB Garamond', Georgia, serif;
-    font-size: clamp(1.2rem, 3.2vw, 1.9rem);
-    font-weight: 500;
-    color: #3d2a14;
+    position: absolute;
+    left: calc(50% - 30px);
+    top: calc(71.5% + 37px);
+    transform: translate(-50%, -50%);
+    font-family: 'Cedarville Cursive', cursive;
+    font-size: clamp(0.95rem, 2.6vw, 1rem);
+    font-weight: 800;
+    color: #00237c;
     margin: 0;
-    letter-spacing: 0.08em;
     text-align: center;
-  }
-
-  .icon {
-    opacity: 0.6;
-    margin-top: 0.2rem;
+    white-space: nowrap;
+    line-height: 1;
   }
 </style>
