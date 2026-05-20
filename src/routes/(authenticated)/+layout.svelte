@@ -601,12 +601,6 @@ $effect(() => {
 								class="absolute top-5 left-8 z-10 page-top-link text-xs text-stone-400 tracking-wide hover:text-ornament-gold transition-colors"
 								aria-label="Open calendar"
 							>{($page.data as any).displayDate ?? ''}</button>
-							<button
-								type="button"
-								onclick={() => { void navigateTo(todayIso()); }}
-								class="absolute top-5 right-8 z-10 page-top-link text-xs text-stone-400 tracking-wide hover:text-ornament-gold transition-colors"
-								aria-label="Turn to Today"
-							>Turn to today...</button>
 							{#if activeEditor !== 'left'}
 								<div
 									class="absolute inset-0 w-full overflow-hidden px-8 pt-12 pb-8 text-ink-900 leading-relaxed pointer-events-none whitespace-pre-wrap break-words"
@@ -692,12 +686,6 @@ $effect(() => {
 							</div>
 						</div>
 					{:else if spreadState.kind === 'entry'}
-						<!-- Recent entries link — center top of right page, sits within the pt-12 top margin -->
-						<button
-							type="button"
-							onclick={() => { spreadState = { kind: 'toc' }; }}
-							class="absolute top-5 left-1/2 -translate-x-1/2 z-10 page-top-link text-xs text-stone-400 tracking-wide hover:text-ornament-gold transition-colors"
-						>Recent entries</button>
 						{@const rightStart = splitPoints[entryPageSpread * 2]}
 						{@const rightEnd = splitPoints[entryPageSpread * 2 + 1]}
 						{#if rightStart !== undefined}
@@ -792,6 +780,9 @@ $effect(() => {
 							<div class="spell-buttons">
 								<button type="button" onclick={() => { void navigateTo(todayIso()); }} class="spell-today" aria-label="Turn to today">
 									<img src="/now.svg" style="width: 100%; height: 100%; object-fit: contain" alt="" />
+								</button>
+								<button type="button" onclick={() => { spreadState = { kind: 'toc' }; }} class="spell-entries" aria-label="Recent entries">
+									<img src="/entries.svg" style="width: 100%; height: 100%; object-fit: contain" alt="" />
 								</button>
 								<button type="button" onclick={openSettings} class="spell-settings" aria-label="Settings">
 									<img src="/edelweiss.svg" style="width: 100%; height: 100%; object-fit: contain" alt="" />
@@ -1253,7 +1244,8 @@ $effect(() => {
 	}
 
 	.spell-settings,
-	.spell-today {
+	.spell-today,
+	.spell-entries {
 		position: relative;
 		background: transparent;
 		border: none;
@@ -1269,7 +1261,8 @@ $effect(() => {
 	}
 
 	.spell-settings:hover,
-	.spell-today:hover {
+	.spell-today:hover,
+	.spell-entries:hover {
 		opacity: 1;
 	}
 
@@ -1277,10 +1270,12 @@ $effect(() => {
 	.spell-panel.is-closed .spell-flower::after { content: "open"; }
 	.spell-panel.is-open  .spell-flower::after  { content: "close"; }
 	.spell-today::after    { content: "today"; }
+	.spell-entries::after  { content: "recent entries"; }
 	.spell-settings::after { content: "settings"; }
 
 	.spell-flower::after,
 	.spell-today::after,
+	.spell-entries::after,
 	.spell-settings::after {
 		position: absolute;
 		top: calc(100% + 1.2cqi);
@@ -1304,6 +1299,8 @@ $effect(() => {
 	.spell-flower:focus-visible::after,
 	.spell-today:hover::after,
 	.spell-today:focus-visible::after,
+	.spell-entries:hover::after,
+	.spell-entries:focus-visible::after,
 	.spell-settings:hover::after,
 	.spell-settings:focus-visible::after {
 		opacity: 1;
@@ -1353,6 +1350,7 @@ $effect(() => {
 	.shell-stack-left {
 		left: calc(-1 * var(--left-stack) * 3cqw);
 		width: calc(var(--left-stack) * 3cqw);
+		border-radius: 3px 0 0 3px;
 		background:
 			linear-gradient(to right, rgba(0, 0, 0, 0) 40%, rgba(0, 0, 0, 0.10) 100%),
 			repeating-linear-gradient(
@@ -1372,6 +1370,7 @@ $effect(() => {
 	.shell-stack-right {
 		right: calc(-1 * var(--right-stack) * 3cqw);
 		width: calc(var(--right-stack) * 3cqw);
+		border-radius: 0 3px 3px 0;
 		background:
 			linear-gradient(to left, rgba(0, 0, 0, 0) 40%, rgba(0, 0, 0, 0.10) 100%),
 			repeating-linear-gradient(
