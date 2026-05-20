@@ -732,7 +732,7 @@ $effect(() => {
 						<TocPage entries={entryDatePreviews} onNavigate={navigateTo} />
 					{:else if spreadState.kind === 'cover'}
 						<div role="presentation" class="h-full w-full cursor-pointer" onclick={onFlipNext}>
-							<CoverPage config={activeCover} {username} {diaryTitle} showSettings={false} onOpenSettings={openSettings} />
+							<CoverPage config={activeCover} {username} {diaryTitle} showSettings={true} buttonLabel="Turn to today" onOpenSettings={() => { void navigateTo(todayIso()); }} />
 						</div>
 					{:else if spreadState.kind === 'backEndpaper'}
 						<div class="endpaper-fill endpaper-fill-right">
@@ -789,9 +789,14 @@ $effect(() => {
 									<li><span class="spell-code">_word_</span> <u>extra important</u></li>
 									<li><span class="spell-code">~word~</span> <s>crossed out</s></li>
 							</ul>
-							<button type="button" onclick={openSettings} class="spell-settings" aria-label="Settings">
-								<img src="/edelweiss.svg" style="width: 100%; height: 100%; object-fit: contain" alt="" />
-							</button>
+							<div class="spell-buttons">
+								<button type="button" onclick={() => { void navigateTo(todayIso()); }} class="spell-today" aria-label="Turn to today">
+									<img src="/now.svg" style="width: 100%; height: 100%; object-fit: contain" alt="" />
+								</button>
+								<button type="button" onclick={openSettings} class="spell-settings" aria-label="Settings">
+									<img src="/edelweiss.svg" style="width: 100%; height: 100%; object-fit: contain" alt="" />
+								</button>
+							</div>
 							</div>
 					</div>
 				</div>
@@ -1172,7 +1177,7 @@ $effect(() => {
 		max-width: none;
 		height: var(--spell-collapsed-size);
 		width: var(--spell-collapsed-size);
-		overflow: hidden;
+		overflow: visible;
 		transform-origin: left center;
 		transition: width 1s ease, padding 1s ease;
 	}
@@ -1189,7 +1194,7 @@ $effect(() => {
 		flex: 1 1 auto;
 		gap: 1cqi;
 		min-width: 0;
-		overflow: hidden;
+		overflow: visible;
 		opacity: 0;
 		transform: translateX(-0.5rem);
 		pointer-events: none;
@@ -1239,13 +1244,22 @@ $effect(() => {
 		border-radius: 2px;
 	}
 
-	.spell-settings {
+	.spell-buttons {
+		margin-left: auto;
+		flex-shrink: 0;
+		display: flex;
+		align-items: center;
+		gap: 0.4cqi;
+	}
+
+	.spell-settings,
+	.spell-today {
+		position: relative;
 		background: transparent;
 		border: none;
 		cursor: pointer;
 		padding: 0.22cqi;
 		opacity: 0.65;
-		margin-left: auto;
 		flex-shrink: 0;
 		display: flex;
 		align-items: center;
@@ -1254,8 +1268,46 @@ $effect(() => {
 		height: 3.6cqi;
 	}
 
-	.spell-settings:hover {
+	.spell-settings:hover,
+	.spell-today:hover {
 		opacity: 1;
+	}
+
+	/* ── Ribbon tooltips ─────────────────────────────────────────────────── */
+	.spell-panel.is-closed .spell-flower::after { content: "open"; }
+	.spell-panel.is-open  .spell-flower::after  { content: "close"; }
+	.spell-today::after    { content: "today"; }
+	.spell-settings::after { content: "settings"; }
+
+	.spell-flower::after,
+	.spell-today::after,
+	.spell-settings::after {
+		position: absolute;
+		top: calc(100% + 1.2cqi);
+		left: 50%;
+		transform: translateX(-50%) scale(0.88);
+		font-family: 'Rouge Script', cursive;
+		font-size: 1.9cqi;
+		color: #4a3728;
+		background: rgba(254, 252, 247, 0.96);
+		border: 1px solid #dfc9a4;
+		padding: 0.12cqi 0.55cqi;
+		border-radius: 0.5cqi;
+		white-space: nowrap;
+		pointer-events: none;
+		opacity: 0;
+		transition: opacity 0.18s ease, transform 0.18s ease;
+		z-index: 40;
+	}
+
+	.spell-flower:hover::after,
+	.spell-flower:focus-visible::after,
+	.spell-today:hover::after,
+	.spell-today:focus-visible::after,
+	.spell-settings:hover::after,
+	.spell-settings:focus-visible::after {
+		opacity: 1;
+		transform: translateX(-50%) scale(1);
 	}
 
 	.book-frame {
@@ -1364,6 +1416,7 @@ $effect(() => {
 	}
 
 	.spell-flower {
+		position: relative;
 		background: transparent;
 		border: none;
 		border-radius: 0;

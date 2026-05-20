@@ -1,0 +1,26 @@
+<svg width="96" height="96" viewBox="0 0 96 96" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Today">
+
+  <!-- Thick border ring -->
+  <circle cx="48" cy="48" r="39" fill="none" stroke="currentColor" stroke-width="6"/>
+
+  <!-- 9 edelweiss bracts — filled teardrops radiating from center -->
+  <g fill="currentColor" opacity="0.82">
+    <path d="M48,48 C45,40 44,29 48,18 C52,29 51,40 48,48" transform="rotate(0,48,48)"/>
+    <path d="M48,48 C45,40 44,29 48,18 C52,29 51,40 48,48" transform="rotate(40,48,48)"/>
+    <path d="M48,48 C45,40 44,29 48,18 C52,29 51,40 48,48" transform="rotate(80,48,48)"/>
+    <path d="M48,48 C45,40 44,29 48,18 C52,29 51,40 48,48" transform="rotate(120,48,48)"/>
+    <path d="M48,48 C45,40 44,29 48,18 C52,29 51,40 48,48" transform="rotate(160,48,48)"/>
+    <path d="M48,48 C45,40 44,29 48,18 C52,29 51,40 48,48" transform="rotate(200,48,48)"/>
+    <path d="M48,48 C45,40 44,29 48,18 C52,29 51,40 48,48" transform="rotate(240,48,48)"/>
+    <path d="M48,48 C45,40 44,29 48,18 C52,29 51,40 48,48" transform="rotate(280,48,48)"/>
+    <path d="M48,48 C45,40 44,29 48,18 C52,29 51,40 48,48" transform="rotate(320,48,48)"/>
+  </g>
+
+  <!-- Woolly center cluster -->
+  <circle cx="48" cy="48" r="5.5" fill="currentColor"/>
+  <circle cx="48" cy="41.5" r="2.5" fill="currentColor"/>
+  <circle cx="53.5" cy="50.5" r="2.5" fill="currentColor"/>
+  <circle cx="42.5" cy="50.5" r="2.5" fill="currentColor"/>
+  <circle cx="48"   cy="54.5" r="2.5" fill="currentColor"/>
+
+</svg>
