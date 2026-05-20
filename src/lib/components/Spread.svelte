@@ -117,6 +117,8 @@ const {
 			inset 0 5px 18px rgba(50, 28, 4, 0.22),
 			inset 0 -5px 14px rgba(50, 28, 4, 0.16),
 			inset 0 -2px 0 0 rgba(110, 70, 15, 0.40);
+		/* Drop shadow following the clip-path outline — gives each page perceived lift */
+		filter: drop-shadow(0px 2px 5px rgba(0, 0, 0, 0.22));
 	}
 
 	.page::before {
@@ -154,8 +156,10 @@ const {
 			1px 18%,
 			0% 0%
 		);
-		/* Outer-edge shadow simulates page-stack depth on the left side */
-		box-shadow: inset 6px 0 14px -2px rgba(0, 0, 0, 0.18);
+		/* Outer-edge inset + strip simulates page-stack depth on the left side */
+		box-shadow:
+			inset 10px 0 20px rgba(0, 0, 0, 0.22),
+			inset 2px 0 0 0 rgba(0, 0, 0, 0.18);
 	}
 
 	/* Right page irregular at right edge */
@@ -170,8 +174,10 @@ const {
 			100% 100%,
 			0% 100%
 		);
-		/* Outer-edge shadow simulates page-stack depth on the right side */
-		box-shadow: inset -6px 0 14px -2px rgba(0, 0, 0, 0.18);
+		/* Outer-edge inset + strip simulates page-stack depth on the right side */
+		box-shadow:
+			inset -10px 0 20px rgba(0, 0, 0, 0.22),
+			inset -2px 0 0 0 rgba(0, 0, 0, 0.18);
 	}
 
 	/* Click zones */

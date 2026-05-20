@@ -526,7 +526,7 @@ $effect(() => {
 			if (Math.abs(delta) > 50) { if (delta < 0 && canFlipNext) onFlipNext(); else if (delta > 0 && canFlipPrev) onFlipPrev(); }
 		}}
 	>
-		<div class="book-frame relative w-full max-w-5xl aspect-[309/194]" class:is-closed={spreadState.kind === 'cover' || spreadState.kind === 'backCover'}>
+		<div class="book-frame relative w-full max-w-5xl aspect-[331/194]" class:is-closed={spreadState.kind === 'cover' || spreadState.kind === 'backCover'}>
 		<div
 				class="book-shell"
 				class:is-closed={spreadState.kind === 'cover' || spreadState.kind === 'backCover'}
@@ -1168,38 +1168,38 @@ $effect(() => {
 		left: calc(-1 * var(--left-stack) * 3cqw);
 		width: calc(var(--left-stack) * 3cqw);
 		background:
-			linear-gradient(to right, rgba(0, 0, 0, 0) 50%, rgba(0, 0, 0, 0.08) 100%),
+			linear-gradient(to right, rgba(0, 0, 0, 0) 40%, rgba(0, 0, 0, 0.10) 100%),
 			repeating-linear-gradient(
 				to right,
-				#f0e3c6 0,      #f0e3c6 0.5px,
-				#e8d5a8 0.5px,  #e8d5a8 1px,
-				#f5eacc 1px,    #f5eacc 1.5px,
-				#ebdbb0 1.5px,  #ebdbb0 2px,
-				#f2e6c9 2px,    #f2e6c9 2.5px,
-				#e5d3a4 2.5px,  #e5d3a4 3px,
-				#f0e2c4 3px,    #f0e2c4 3.5px,
-				#e9dab0 3.5px,  #e9dab0 4px
+				#f0e3c6 0,             #f0e3c6 2px,
+				rgba(0,0,0,0.28) 2px,  rgba(0,0,0,0.28) 2.5px,
+				#ece0bc 2.5px,         #ece0bc 4.5px,
+				rgba(0,0,0,0.22) 4.5px, rgba(0,0,0,0.22) 5px,
+				#f3e7cb 5px,           #f3e7cb 7px,
+				rgba(0,0,0,0.25) 7px,  rgba(0,0,0,0.25) 7.5px,
+				#e8d9b2 7.5px,         #e8d9b2 9.5px,
+				rgba(0,0,0,0.22) 9.5px, rgba(0,0,0,0.22) 10px
 			);
-		mask-image: linear-gradient(to right, black 65%, rgba(0, 0, 0, 0.7) 100%);
+		mask-image: linear-gradient(to right, black 60%, rgba(0, 0, 0, 0.75) 100%);
 	}
 
 	.shell-stack-right {
 		right: calc(-1 * var(--right-stack) * 3cqw);
 		width: calc(var(--right-stack) * 3cqw);
 		background:
-			linear-gradient(to left, rgba(0, 0, 0, 0) 50%, rgba(0, 0, 0, 0.08) 100%),
+			linear-gradient(to left, rgba(0, 0, 0, 0) 40%, rgba(0, 0, 0, 0.10) 100%),
 			repeating-linear-gradient(
 				to left,
-				#f0e3c6 0,      #f0e3c6 0.5px,
-				#e8d5a8 0.5px,  #e8d5a8 1px,
-				#f5eacc 1px,    #f5eacc 1.5px,
-				#ebdbb0 1.5px,  #ebdbb0 2px,
-				#f2e6c9 2px,    #f2e6c9 2.5px,
-				#e5d3a4 2.5px,  #e5d3a4 3px,
-				#f0e2c4 3px,    #f0e2c4 3.5px,
-				#e9dab0 3.5px,  #e9dab0 4px
+				#f0e3c6 0,             #f0e3c6 2px,
+				rgba(0,0,0,0.28) 2px,  rgba(0,0,0,0.28) 2.5px,
+				#ece0bc 2.5px,         #ece0bc 4.5px,
+				rgba(0,0,0,0.22) 4.5px, rgba(0,0,0,0.22) 5px,
+				#f3e7cb 5px,           #f3e7cb 7px,
+				rgba(0,0,0,0.25) 7px,  rgba(0,0,0,0.25) 7.5px,
+				#e8d9b2 7.5px,         #e8d9b2 9.5px,
+				rgba(0,0,0,0.22) 9.5px, rgba(0,0,0,0.22) 10px
 			);
-		mask-image: linear-gradient(to left, black 65%, rgba(0, 0, 0, 0.7) 100%);
+		mask-image: linear-gradient(to left, black 60%, rgba(0, 0, 0, 0.75) 100%);
 	}
 
 	/* ── Gutter seam (persistent, above spread, below modals) ───────────── */
