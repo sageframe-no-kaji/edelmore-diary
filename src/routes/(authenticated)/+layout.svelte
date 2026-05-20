@@ -258,7 +258,7 @@ function computePrevZonePct(): number {
     spreadState.kind === 'backEndpaper' ||
     spreadState.kind === 'frontEndpaper';
   if (isEndpaperOrModal) return 20;
-  return 5;
+  return 15;
 }
 const prevZonePct = $derived(computePrevZonePct());
 function computeNextZonePct(): number {
@@ -269,7 +269,8 @@ function computeNextZonePct(): number {
     spreadState.kind === 'backEndpaper' ||
     spreadState.kind === 'frontEndpaper';
   if (isEndpaperOrModal) return 20;
-  return 5;
+  // Entry and TOC: wide enough to find and click without obscuring text.
+  return 15;
 }
 const nextZonePct = $derived(computeNextZonePct());
 const flipOverhangRem = $derived(spreadIndex === 0 ? 0 : 4);
