@@ -407,17 +407,25 @@ async function saveSettings() {
     body: formData,
   });
   savingSettings = false;
-  if (!response.ok) {
-    let errorMessage = 'You have unsaved changes.';
-    try {
-      const payload = await response.json();
-      if (typeof payload?.data?.error === 'string') {
-        errorMessage = payload.data.error;
-      } else if (typeof payload?.error === 'string') {
-        errorMessage = payload.error;
+  // SvelteKit form actions always return HTTP 200; success/failure is in the JSON body.
+  let result: { type?: string; data?: string } | null = null;
+  try {
+    result = await response.json();
+  } catch {
+    /* non-JSON — treat as failure */
+  }
+  if (result?.type !== 'success') {
+    let errorMessage = 'Could not save settings. Please try again.';
+    if (result?.type === 'redirect') {
+      errorMessage = 'Session expired. Please reload the page.';
+    } else if (typeof result?.data === 'string') {
+      try {
+        // SvelteKit encodes fail() data as devalue: [{key: index}, ...values]
+        const parts: unknown[] = JSON.parse(result.data);
+        if (Array.isArray(parts) && typeof parts[1] === 'string') errorMessage = parts[1];
+      } catch {
+        // keep fallback message
       }
-    } catch {
-      // keep fallback
     }
     settingsWarning = true;
     settingsWarningText = errorMessage;
