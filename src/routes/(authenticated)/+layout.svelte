@@ -732,8 +732,8 @@ $effect(() => {
 									<p class="ep-about-title">Edelmore</p>
 									<p class="ep-about-subtitle">(Edelweiss + Evermore)</p>
 									<p class="ep-about-body">A private diary shaped like a book.</p>
-									<p class="ep-about-body">Made for Iona and Isla — and anyone else who wants a quiet place that belongs to them — by their dad, Andrew. <a href="https://atmarcus.net" class="ep-about-link">atmarcus.net</a></p>
-									<p class="ep-about-body">Inspired by Little House on the Prairie, All-of-a-Kind Family, and the diary of Anne Frank.</p>
+									<p class="ep-about-body">Made for Iona, Ada, &amp; Isla — and anyone else who wants a quiet place that belongs to them — by their dad, Andrew. <a href="https://atmarcus.net" class="ep-about-link">atmarcus.net</a></p>
+									<p class="ep-about-body">Inspired by <em>Little House on the Prairie</em>, <em>All-of-a-Kind Family</em>, and <em>the diary of Anne Frank</em>.</p>
 									<p class="ep-about-body">Saves itself. Tells your story. Listens when your hands are tired.</p>
 									<p class="ep-about-body">Built with Universal Design for Learning. <a href="https://udlguidelines.cast.org" class="ep-about-link">udlguidelines.cast.org</a></p>
 									<p class="ep-about-body">Runs at home.</p>
@@ -1029,13 +1029,13 @@ $effect(() => {
 		pointer-events: none;
 	}
 
-	/* Back endpaper: label centered at 1/3 page size */
+	/* Back endpaper: label centered at 40% page width */
 	.back-label-sticker {
 		position: absolute;
 		top: 50%;
 		left: 50%;
 		transform: translate(-50%, -50%);
-		width: 33%;
+		width: 40%;
 	}
 
 	.back-label-img {
@@ -1053,23 +1053,23 @@ $effect(() => {
 		align-items: center;
 		justify-content: center;
 		text-align: center;
-		gap: 0.15rem;
+		gap: 2px;
 		overflow: hidden;
 	}
 
 	.ep-about-section {
 		font-family: 'EB Garamond', Georgia, serif;
-		font-size: 0.6rem;
+		font-size: 10px;
 		color: #6a4a28;
 		letter-spacing: 0.12em;
 		text-transform: uppercase;
-		margin: 0 0 0.1rem;
+		margin: 0 0 2px;
 		flex-shrink: 0;
 	}
 
 	.ep-about-title {
 		font-family: 'Rouge Script', cursive;
-		font-size: 1.5rem;
+		font-size: 24px;
 		color: #3a2510;
 		font-weight: 400;
 		line-height: 1.0;
@@ -1079,16 +1079,16 @@ $effect(() => {
 
 	.ep-about-subtitle {
 		font-family: 'EB Garamond', Georgia, serif;
-		font-size: 0.58rem;
+		font-size: 9px;
 		color: #6a4a28;
 		font-style: italic;
-		margin: 0 0 0.25rem;
+		margin: 0 0 4px;
 		flex-shrink: 0;
 	}
 
 	.ep-about-body {
 		font-family: 'EB Garamond', Georgia, serif;
-		font-size: 0.58rem;
+		font-size: 9px;
 		color: #4a3520;
 		line-height: 1.5;
 		margin: 0;
