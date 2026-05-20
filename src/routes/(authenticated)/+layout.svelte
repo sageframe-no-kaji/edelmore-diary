@@ -253,23 +253,13 @@ function computePrevZonePct(): number {
   if (spreadState.kind === 'cover') return 0;
   if (spreadState.kind === 'backCover') return 8;
   if (spreadState.kind === 'toc') return 50;
-  const isEndpaperOrModal =
-    spreadState.kind === 'settings' ||
-    spreadState.kind === 'backEndpaper' ||
-    spreadState.kind === 'frontEndpaper';
-  if (isEndpaperOrModal) return 10;
-  // 3% = just the page-stack strip. The 100rem overhang handles the wallpaper.
+  // 3% = page-stack strip only. 100rem overhang covers leather frame + wallpaper.
   return 3;
 }
 const prevZonePct = $derived(computePrevZonePct());
 function computeNextZonePct(): number {
   if (spreadState.kind === 'cover') return 0;
   if (spreadState.kind === 'backCover') return 0;
-  const isEndpaperOrModal =
-    spreadState.kind === 'settings' ||
-    spreadState.kind === 'backEndpaper' ||
-    spreadState.kind === 'frontEndpaper';
-  if (isEndpaperOrModal) return 10;
   return 3;
 }
 const nextZonePct = $derived(computeNextZonePct());
