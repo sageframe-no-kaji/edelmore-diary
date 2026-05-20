@@ -16,7 +16,10 @@ const nextSize = $derived(FONT_STEPS[FONT_STEPS.indexOf(currentSize) + 1] ?? nul
 
 <div class="settings-shell">
   <header class="settings-header">
-    <a href="/" class="back-link" aria-label="Back to diary">← Back</a>
+    <div class="header-links">
+      <a href="/" class="back-link" aria-label="Back to diary">← Back</a>
+      <a href="/logout" class="logout-link" aria-label="Log out">Log out</a>
+    </div>
     <h1 class="settings-title">Settings</h1>
   </header>
 
@@ -127,6 +130,13 @@ const nextSize = $derived(FONT_STEPS[FONT_STEPS.indexOf(currentSize) + 1] ?? nul
     margin-bottom: 2rem;
   }
 
+  .header-links {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    flex-wrap: wrap;
+  }
+
   .back-link {
     font-family: 'EB Garamond', Georgia, serif;
     font-size: 0.9rem;
@@ -139,6 +149,21 @@ const nextSize = $derived(FONT_STEPS[FONT_STEPS.indexOf(currentSize) + 1] ?? nul
 
   .back-link:hover {
     opacity: 1;
+  }
+
+  .logout-link {
+    font-family: 'EB Garamond', Georgia, serif;
+    font-size: 0.9rem;
+    color: #e8dcc0;
+    text-decoration: none;
+    letter-spacing: 0.05em;
+    opacity: 0.7;
+    transition: opacity 0.15s, color 0.15s;
+  }
+
+  .logout-link:hover {
+    opacity: 1;
+    color: #f3dca1;
   }
 
   .settings-title {

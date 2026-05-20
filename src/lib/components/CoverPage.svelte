@@ -20,7 +20,9 @@ const {
   onOpenSettings,
 }: Props = $props();
 
+// biome-ignore lint/style/useConst: $state with bind:this — Svelte assigns via binding
 let titleBlockEl: HTMLDivElement | null = $state(null);
+// biome-ignore lint/style/useConst: $state with bind:this — Svelte assigns via binding
 let nameEl: HTMLParagraphElement | null = $state(null);
 let nameScale = $state(1);
 

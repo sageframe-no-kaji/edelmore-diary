@@ -10,11 +10,15 @@ type Props = {
 
 const { entries, onNavigate }: Props = $props();
 
+// biome-ignore lint/style/useConst: $state with bind:this — Svelte assigns via binding
 let pageEl: HTMLDivElement | null = $state(null);
+// biome-ignore lint/style/useConst: $state with bind:this — Svelte assigns via binding
 let listEl: HTMLUListElement | null = $state(null);
 let visibleCount = $state(untrack(() => entries.length));
 
-const orderedEntries = $derived([...entries].sort((left, right) => left.entry_date.localeCompare(right.entry_date)));
+const orderedEntries = $derived(
+  [...entries].sort((left, right) => left.entry_date.localeCompare(right.entry_date))
+);
 
 function updateVisibleCount() {
   if (!pageEl || !listEl) return;

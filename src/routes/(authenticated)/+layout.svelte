@@ -2,13 +2,13 @@
 import { goto } from '$app/navigation';
 import { invalidateAll } from '$app/navigation';
 import { page } from '$app/stores';
-import { todayIso } from '$lib/dates.js';
 import CalendarModal from '$lib/components/CalendarModal.svelte';
 import CoverPage from '$lib/components/CoverPage.svelte';
 import ExLibrisPage from '$lib/components/ExLibrisPage.svelte';
 import Spread from '$lib/components/Spread.svelte';
 import TocPage from '$lib/components/TocPage.svelte';
 import { findCover } from '$lib/covers.js';
+import { todayIso } from '$lib/dates.js';
 import type { EntryDatePreview } from '$lib/db.js';
 import { findSplitIndex, snapToWordBreak } from '$lib/overflow.js';
 import type { Snippet } from 'svelte';
@@ -18,9 +18,9 @@ type SpreadState =
   | { kind: 'cover' }
   | { kind: 'toc' }
   | { kind: 'entry'; date: string }
-	| { kind: 'settings' }
-	| { kind: 'backCover' }
-	| { kind: 'about' };
+  | { kind: 'settings' }
+  | { kind: 'backCover' }
+  | { kind: 'about' };
 
 const { children }: { children: Snippet } = $props();
 
@@ -76,18 +76,15 @@ $effect(() => {
 });
 
 function renderMarkdown(text: string): string {
-	const escaped = text
-		.replace(/&/g, '&amp;')
-		.replace(/</g, '&lt;')
-		.replace(/>/g, '&gt;');
+  const escaped = text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
-	return escaped
-		.replace(/~~([^~]+)~~/g, '<s>$1</s>')
-		.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
-		.replace(/__([^_]+)__/g, '<u>$1</u>')
-		.replace(/(?<!_)_([^_\n]+)_(?!_)/g, '<u>$1</u>')
-		.replace(/(?<!~)~([^~\n]+)~(?!~)/g, '<s>$1</s>')
-		.replace(/\*([^*]+)\*/g, '<em>$1</em>');
+  return escaped
+    .replace(/~~([^~]+)~~/g, '<s>$1</s>')
+    .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+    .replace(/__([^_]+)__/g, '<u>$1</u>')
+    .replace(/(?<!_)_([^_\n]+)_(?!_)/g, '<u>$1</u>')
+    .replace(/(?<!~)~([^~\n]+)~(?!~)/g, '<s>$1</s>')
+    .replace(/\*([^*]+)\*/g, '<em>$1</em>');
 }
 
 // Autosave — fires only when content differs from what the server has.
@@ -125,7 +122,7 @@ async function navigateTo(date: string) {
 
 function onFlipNext() {
   if (spreadState.kind === 'cover') {
-    spreadState = { kind: 'toc' };
+    void navigateTo(todayIso());
   } else if (spreadState.kind === 'toc') {
     if (entryDatePreviews.length > 0) {
       navigateTo(entryDatePreviews[0].entry_date);
@@ -135,17 +132,17 @@ function onFlipNext() {
       entryPageSpread += 1;
     } else if (nextDate) {
       navigateTo(nextDate);
-		} else if (entryDatePreviews.length > 0) {
-			spreadState = { kind: 'backCover' };
+    } else if (entryDatePreviews.length > 0) {
+      spreadState = { kind: 'backCover' };
     }
   }
 }
 
 function onFlipPrev() {
-	if (spreadState.kind === 'backCover') {
-		void navigateTo(todayIso());
-		return;
-	}
+  if (spreadState.kind === 'backCover') {
+    void navigateTo(todayIso());
+    return;
+  }
   if (spreadState.kind === 'entry') {
     if (entryPageSpread > 0) {
       entryPageSpread -= 1;
@@ -160,63 +157,65 @@ function onFlipPrev() {
 }
 
 function openAbout() {
-	prevSpreadState = spreadState;
-	spreadState = { kind: 'about' };
+  prevSpreadState = spreadState;
+  spreadState = { kind: 'about' };
 }
 
 function closeAbout() {
-	spreadState = prevSpreadState ?? { kind: 'cover' };
-	prevSpreadState = null;
+  spreadState = prevSpreadState ?? { kind: 'cover' };
+  prevSpreadState = null;
 }
 
 function openSettings() {
   prevSpreadState = spreadState;
   spreadState = { kind: 'settings' };
-	settingsWarning = false;
-	settingsWarningText = 'You have unsaved changes.';
-	settingsBackArmed = false;
-	draftUsername = username;
-	draftDiaryTitle = diaryTitle;
-	draftFontSizeCqw = fontSizeCqw;
-	draftJournalFont = journalFont as JournalFont;
-	draftPin = '';
-	draftConfirm = '';
+  settingsWarning = false;
+  settingsWarningText = 'You have unsaved changes.';
+  settingsBackArmed = false;
+  draftUsername = username;
+  draftDiaryTitle = diaryTitle;
+  draftFontSizeCqw = fontSizeCqw;
+  draftJournalFont = journalFont as JournalFont;
+  draftPin = '';
+  draftConfirm = '';
 }
 
 function closeSettings() {
-	if (settingsDirty && !settingsBackArmed) {
-		settingsWarning = true;
-		settingsBackArmed = true;
-		settingsWarningText = 'You have unsaved changes.';
-		return;
-	}
+  if (settingsDirty && !settingsBackArmed) {
+    settingsWarning = true;
+    settingsBackArmed = true;
+    settingsWarningText = 'You have unsaved changes.';
+    return;
+  }
   spreadState = prevSpreadState ?? { kind: 'cover' };
   prevSpreadState = null;
-	settingsWarning = false;
-	settingsBackArmed = false;
-	settingsWarningText = 'You have unsaved changes.';
+  settingsWarning = false;
+  settingsBackArmed = false;
+  settingsWarningText = 'You have unsaved changes.';
 }
 
 function computeCanFlipPrev(): boolean {
-	return spreadState.kind !== 'cover' && spreadState.kind !== 'settings' && spreadState.kind !== 'about';
+  return (
+    spreadState.kind !== 'cover' && spreadState.kind !== 'settings' && spreadState.kind !== 'about'
+  );
 }
 const canFlipPrev = $derived(computeCanFlipPrev());
 function computeCanFlipNext(): boolean {
   if (spreadState.kind === 'cover') return true;
   if (spreadState.kind === 'toc') return entryDatePreviews.length > 0;
   if (spreadState.kind === 'settings') return false;
-	if (spreadState.kind === 'backCover') return false;
-	if (spreadState.kind === 'about') return false;
-	return true;
+  if (spreadState.kind === 'backCover') return false;
+  if (spreadState.kind === 'about') return false;
+  return true;
 }
 const canFlipNext = $derived(computeCanFlipNext());
 
 function getSpreadIndex(): number {
   if (spreadState.kind === 'cover') return 0;
   if (spreadState.kind === 'toc') return 1;
-	if (spreadState.kind === 'settings') return Math.max(spreadCount - 2, 2);
-	if (spreadState.kind === 'backCover') return Math.max(spreadCount - 1, 3);
-	if (spreadState.kind === 'about') return Math.max(spreadCount - 2, 2);
+  if (spreadState.kind === 'settings') return Math.max(spreadCount - 2, 2);
+  if (spreadState.kind === 'backCover') return Math.max(spreadCount - 1, 3);
+  if (spreadState.kind === 'about') return Math.max(spreadCount - 2, 2);
   const idx = entryDatePreviews.findIndex(
     (e) =>
       spreadState.kind === 'entry' &&
@@ -231,8 +230,8 @@ const spreadCount = $derived(entryDatePreviews.length + 3);
 // Entry: narrow margin strips on both sides; text area in between is unobstructed.
 function computePrevZonePct(): number {
   if (spreadState.kind === 'settings') return 0;
-	if (spreadState.kind === 'about') return 0;
-	if (spreadState.kind === 'backCover') return 8;
+  if (spreadState.kind === 'about') return 0;
+  if (spreadState.kind === 'backCover') return 8;
   if (spreadIndex === 0) return 0;
   if (spreadIndex === 1) return 50;
   return 5;
@@ -240,8 +239,8 @@ function computePrevZonePct(): number {
 const prevZonePct = $derived(computePrevZonePct());
 function computeNextZonePct(): number {
   if (spreadState.kind === 'settings') return 0;
-	if (spreadState.kind === 'about') return 0;
-	if (spreadState.kind === 'backCover') return 0;
+  if (spreadState.kind === 'about') return 0;
+  if (spreadState.kind === 'backCover') return 0;
   if (spreadIndex === 0) return 0;
   return 5;
 }
@@ -252,8 +251,12 @@ const entryDates = $derived(new Set(entryDatePreviews.map((e) => e.entry_date)))
 
 type JournalFont = 'eb-garamond' | 'cedarville-cursive';
 const JOURNAL_FONT_OPTIONS: { value: JournalFont; label: string; family: string }[] = [
-	{ value: 'cedarville-cursive', label: 'Cedarville Cursive', family: 'Cedarville Cursive, cursive' },
-	{ value: 'eb-garamond', label: 'EB Garamond', family: 'EB Garamond, Georgia, serif' },
+  {
+    value: 'cedarville-cursive',
+    label: 'Cedarville Cursive',
+    family: 'Cedarville Cursive, cursive',
+  },
+  { value: 'eb-garamond', label: 'EB Garamond', family: 'EB Garamond, Georgia, serif' },
 ];
 
 let draftUsername = $state(untrack(() => username));
@@ -268,36 +271,36 @@ let settingsBackArmed = $state(false);
 let savingSettings = $state(false);
 
 const journalFontFamily = $derived(
-	JOURNAL_FONT_OPTIONS.find((option) => option.value === journalFont)?.family ??
-		'EB Garamond, Georgia, serif'
+  JOURNAL_FONT_OPTIONS.find((option) => option.value === journalFont)?.family ??
+    'EB Garamond, Georgia, serif'
 );
 
 const settingsDirty = $derived(
-	draftUsername !== username ||
-		draftDiaryTitle !== diaryTitle ||
-		draftFontSizeCqw !== fontSizeCqw ||
-		draftJournalFont !== journalFont ||
-		draftPin.length > 0 ||
-		draftConfirm.length > 0
+  draftUsername !== username ||
+    draftDiaryTitle !== diaryTitle ||
+    draftFontSizeCqw !== fontSizeCqw ||
+    draftJournalFont !== journalFont ||
+    draftPin.length > 0 ||
+    draftConfirm.length > 0
 );
 
 $effect(() => {
-	// biome-ignore lint/suspicious/noExplicitAny: layout data merged into $page.data
-	const user = ($page.data as any).user;
-	if (!user) return;
-	untrack(() => {
-		if (spreadState.kind === 'settings' && settingsDirty) return;
-		username = user.username ?? '';
-		diaryTitle = user.diary_title ?? 'D I A R Y';
-		fontSizeCqw = user.font_size ?? 3.4;
-		journalFont = user.journal_font ?? 'eb-garamond';
-		if (spreadState.kind !== 'settings') {
-			draftUsername = username;
-			draftDiaryTitle = diaryTitle;
-			draftFontSizeCqw = fontSizeCqw;
-			draftJournalFont = journalFont as JournalFont;
-		}
-	});
+  // biome-ignore lint/suspicious/noExplicitAny: layout data merged into $page.data
+  const user = ($page.data as any).user;
+  if (!user) return;
+  untrack(() => {
+    if (spreadState.kind === 'settings' && settingsDirty) return;
+    username = user.username ?? '';
+    diaryTitle = user.diary_title ?? 'D I A R Y';
+    fontSizeCqw = user.font_size ?? 3.4;
+    journalFont = user.journal_font ?? 'eb-garamond';
+    if (spreadState.kind !== 'settings') {
+      draftUsername = username;
+      draftDiaryTitle = diaryTitle;
+      draftFontSizeCqw = fontSizeCqw;
+      draftJournalFont = journalFont as JournalFont;
+    }
+  });
 });
 
 // Settings overlay
@@ -318,16 +321,17 @@ let textareaEl: HTMLTextAreaElement | null = $state(null);
 let rightTextareaEl: HTMLTextAreaElement | null = $state(null);
 let measureEl: HTMLTextAreaElement | null = null;
 let pendingCursorRestore: { absPos: number; side: 'left' | 'right' } | null = null;
+// biome-ignore lint/style/useConst: reassigned in template event handlers — Biome doesn't see those
 let activeEditor: 'left' | 'right' | null = $state(null);
 let spellsOpen = $state(true);
 
 $effect(() => {
-	const stored = localStorage.getItem('edelmore-spells-open');
-	if (stored !== null) spellsOpen = stored === 'true';
+  const stored = localStorage.getItem('edelmore-spells-open');
+  if (stored !== null) spellsOpen = stored === 'true';
 });
 
 $effect(() => {
-	localStorage.setItem('edelmore-spells-open', String(spellsOpen));
+  localStorage.setItem('edelmore-spells-open', String(spellsOpen));
 });
 
 const entrySpreadCount = $derived(Math.floor(splitPoints.length / 2) + 1);
@@ -369,51 +373,51 @@ $effect(() => {
 });
 
 async function saveSettings() {
-	if (!settingsDirty || savingSettings) return;
-	settingsWarning = false;
-	settingsBackArmed = false;
-	settingsWarningText = 'You have unsaved changes.';
-	savingSettings = true;
-	const formData = new FormData();
-	formData.set('username', draftUsername);
-	formData.set('diary_title', draftDiaryTitle);
-	formData.set('font_size', String(draftFontSizeCqw));
-	formData.set('journal_font', draftJournalFont);
-	formData.set('pin', draftPin);
-	formData.set('confirm', draftConfirm);
-	const response = await fetch('/settings?/saveSettings', {
-		method: 'POST',
-		body: formData,
-	});
-	savingSettings = false;
-	if (!response.ok) {
-		let errorMessage = 'You have unsaved changes.';
-		try {
-			const payload = await response.json();
-			if (typeof payload?.data?.error === 'string') {
-				errorMessage = payload.data.error;
-			} else if (typeof payload?.error === 'string') {
-				errorMessage = payload.error;
-			}
-		} catch {
-			// keep fallback
-		}
-		settingsWarning = true;
-		settingsWarningText = errorMessage;
-		settingsBackArmed = true;
-		return;
-	}
-	username = draftUsername;
-	diaryTitle = draftDiaryTitle;
-	fontSizeCqw = draftFontSizeCqw;
-	journalFont = draftJournalFont;
-	draftPin = '';
-	draftConfirm = '';
-	settingsWarning = false;
-	settingsBackArmed = false;
-	spreadState = prevSpreadState ?? { kind: 'cover' };
-	prevSpreadState = null;
-	await invalidateAll();
+  if (!settingsDirty || savingSettings) return;
+  settingsWarning = false;
+  settingsBackArmed = false;
+  settingsWarningText = 'You have unsaved changes.';
+  savingSettings = true;
+  const formData = new FormData();
+  formData.set('username', draftUsername);
+  formData.set('diary_title', draftDiaryTitle);
+  formData.set('font_size', String(draftFontSizeCqw));
+  formData.set('journal_font', draftJournalFont);
+  formData.set('pin', draftPin);
+  formData.set('confirm', draftConfirm);
+  const response = await fetch('/settings?/saveSettings', {
+    method: 'POST',
+    body: formData,
+  });
+  savingSettings = false;
+  if (!response.ok) {
+    let errorMessage = 'You have unsaved changes.';
+    try {
+      const payload = await response.json();
+      if (typeof payload?.data?.error === 'string') {
+        errorMessage = payload.data.error;
+      } else if (typeof payload?.error === 'string') {
+        errorMessage = payload.error;
+      }
+    } catch {
+      // keep fallback
+    }
+    settingsWarning = true;
+    settingsWarningText = errorMessage;
+    settingsBackArmed = true;
+    return;
+  }
+  username = draftUsername;
+  diaryTitle = draftDiaryTitle;
+  fontSizeCqw = draftFontSizeCqw;
+  journalFont = draftJournalFont;
+  draftPin = '';
+  draftConfirm = '';
+  settingsWarning = false;
+  settingsBackArmed = false;
+  spreadState = prevSpreadState ?? { kind: 'cover' };
+  prevSpreadState = null;
+  await invalidateAll();
 }
 
 $effect(() => {
@@ -623,6 +627,7 @@ $effect(() => {
 									{#if settingsWarning}
 										<span class="settings-warning-text">{settingsWarningText}</span>
 									{/if}
+									<a href="/logout" data-sveltekit-reload class="settings-logout-link">Log out</a>
 									<button type="button" onclick={closeSettings} class="settings-back-link">← Back</button>
 									<button type="button" onclick={saveSettings} disabled={!settingsDirty || savingSettings} class="settings-save-link">{savingSettings ? 'Saving…' : 'Save'}</button>
 								</div>
@@ -671,6 +676,7 @@ $effect(() => {
 						</div>
 					{:else if spreadState.kind === 'about'}
 						<div class="absolute inset-0 px-8 pt-10 pb-8 overflow-hidden font-serif flex flex-col">
+							<img src="/girls.png" alt="" aria-hidden="true" class="about-girls" />
 							<div class="flex-1 flex flex-col justify-center gap-6 text-ink-900">
 								<h1 class="about-title">Edelmore</h1>
 								<p class="about-subtitle">A private diary shaped like a book.</p>
@@ -838,6 +844,7 @@ $effect(() => {
 					{#if settingsWarning}
 						<span class="settings-warning-text">{settingsWarningText}</span>
 					{/if}
+					<a href="/logout" data-sveltekit-reload class="settings-logout-link" aria-label="Log out">Log out</a>
 					<button type="button" onclick={closeSettings} class="settings-back-link">← Back</button>
 					<button type="button" onclick={saveSettings} disabled={!settingsDirty || savingSettings} class="settings-save-link">{savingSettings ? 'Saving…' : 'Save'}</button>
 				</div>
@@ -866,6 +873,22 @@ $effect(() => {
 <style>
 	.page-top-link {
 		font-family: 'EB Garamond', Georgia, serif;
+	}
+
+	.settings-logout-link {
+		font-family: 'Rouge Script', cursive;
+		font-size: 1.6rem;
+		color: #8b6914;
+		text-decoration: none;
+		margin-right: auto;
+		text-shadow:
+			0 1px 2px rgba(255, 250, 230, 0.45),
+			0 -1px 0 rgba(0, 0, 0, 0.25);
+		transition: opacity 0.15s;
+	}
+
+	.settings-logout-link:hover {
+		opacity: 0.7;
 	}
 
 	.settings-back-link {
@@ -914,6 +937,16 @@ $effect(() => {
 
 	.about-link:hover {
 		color: #5c4510;
+	}
+
+	.about-girls {
+		position: absolute;
+		left: 4%;
+		top: 22%;
+		width: 25%;
+		height: auto;
+		object-fit: contain;
+		pointer-events: none;
 	}
 
 	/* ── About ribbon button ─────────────────────────────────────────────── */
