@@ -526,8 +526,9 @@ $effect(() => {
 			if (Math.abs(delta) > 50) { if (delta < 0 && canFlipNext) onFlipNext(); else if (delta > 0 && canFlipPrev) onFlipPrev(); }
 		}}
 	>
+		<div class="book-frame relative w-full max-w-5xl aspect-[309/194]" class:is-closed={spreadState.kind === 'cover' || spreadState.kind === 'backCover'}>
 		<div
-				class="book-shell relative w-full max-w-5xl aspect-[3/2]"
+				class="book-shell"
 				class:is-closed={spreadState.kind === 'cover' || spreadState.kind === 'backCover'}
 				style="--page-font-size: {draftFontSizeCqw}cqw; --left-stack: {leftStack}; --right-stack: {rightStack};"
 			>
@@ -728,7 +729,8 @@ $effect(() => {
 				{/snippet}
 			</Spread>
 				<div class="shell-seam" aria-hidden="true"></div>
-			{#if spreadState.kind !== 'cover' && spreadState.kind !== 'backCover'}
+		</div><!-- /book-shell -->
+		{#if spreadState.kind !== 'cover' && spreadState.kind !== 'backCover'}
 				<div class="spell-anchor">
 					<div class={`spell-panel ${spellsOpen ? 'is-open' : 'is-closed'}`} role="note" aria-label="Magic writing spells">
 						<button
@@ -767,8 +769,8 @@ $effect(() => {
 						</div>
 					</div>
 				</div>
-			{/if}
-		</div>
+		{/if}
+		</div><!-- /book-frame -->
 	</div>
 
 	<!-- Mobile: single page with nav buttons -->
@@ -1125,8 +1127,30 @@ $effect(() => {
 		border-radius: 2px;
 	}
 
+	.book-frame {
+		background: url('/edge.png') center / 100% 100% no-repeat;
+	}
+
+	.book-frame.is-closed {
+		background: none;
+	}
+
 	.book-shell {
+		position: absolute;
+		width: 93%;
+		height: 93%;
+		top: 50%;
+		left: 50%;
+		transform: translate(-50%, -50%);
 		container-type: inline-size;
+	}
+
+	.book-shell.is-closed {
+		width: 100%;
+		height: 100%;
+		top: 0;
+		left: 0;
+		transform: none;
 	}
 
 

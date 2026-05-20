@@ -93,14 +93,17 @@ const {
 		width: 100%;
 		height: 100%;
 		display: flex;
+		/* Paper color fills the ragged-edge gaps created by clip-path on each page */
+		background: #e2d8ac;
 		box-shadow:
-			0 5px 24px rgba(0, 0, 0, 0.28),
-			0 2px 6px  rgba(0, 0, 0, 0.18),
-			0 1px 2px  rgba(0, 0, 0, 0.10);
+			0 8px 32px rgba(0, 0, 0, 0.38),
+			0 3px 8px  rgba(0, 0, 0, 0.22),
+			0 1px 2px  rgba(0, 0, 0, 0.14);
 	}
 
 	/* Cover and back-cover: kill all shadows — transparent left page bleeds the shadow */
 	.spread.is-cover-spread {
+		background: transparent;
 		box-shadow: none;
 	}
 
@@ -111,9 +114,9 @@ const {
 		background: #e8ddb5;
 		container-type: inline-size;
 		box-shadow:
-			inset 0 4px 14px rgba(60, 35, 5, 0.20),
-			inset 0 -4px 10px rgba(60, 35, 5, 0.14),
-			inset 0 -1px 0 rgba(100, 70, 20, 0.25);
+			inset 0 5px 18px rgba(50, 28, 4, 0.22),
+			inset 0 -5px 14px rgba(50, 28, 4, 0.16),
+			inset 0 -2px 0 0 rgba(110, 70, 15, 0.40);
 	}
 
 	.page::before {
@@ -151,6 +154,8 @@ const {
 			1px 18%,
 			0% 0%
 		);
+		/* Outer-edge shadow simulates page-stack depth on the left side */
+		box-shadow: inset 6px 0 14px -2px rgba(0, 0, 0, 0.18);
 	}
 
 	/* Right page irregular at right edge */
@@ -165,6 +170,8 @@ const {
 			100% 100%,
 			0% 100%
 		);
+		/* Outer-edge shadow simulates page-stack depth on the right side */
+		box-shadow: inset -6px 0 14px -2px rgba(0, 0, 0, 0.18);
 	}
 
 	/* Click zones */
