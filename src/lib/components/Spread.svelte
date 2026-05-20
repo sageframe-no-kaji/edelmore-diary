@@ -121,6 +121,20 @@ const {
 		background: transparent;
 	}
 
+	/* Cover/back-cover: full-bleed leather image — strip all page frame effects */
+	.spread.is-cover-spread .page {
+		background: transparent;
+		box-shadow: none;
+		filter: none;
+		clip-path: none;
+		border: none;
+	}
+
+	.spread.is-cover-spread .page::before,
+	.spread.is-cover-spread .page::after {
+		display: none;
+	}
+
 	.page {
 		flex: 1;
 		position: relative;

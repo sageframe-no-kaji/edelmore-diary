@@ -253,12 +253,22 @@ function computePrevZonePct(): number {
   if (spreadState.kind === 'cover') return 0;
   if (spreadState.kind === 'backCover') return 8;
   if (spreadState.kind === 'toc') return 50;
+  const isEndpaperOrModal =
+    spreadState.kind === 'settings' ||
+    spreadState.kind === 'backEndpaper' ||
+    spreadState.kind === 'frontEndpaper';
+  if (isEndpaperOrModal) return 20;
   return 5;
 }
 const prevZonePct = $derived(computePrevZonePct());
 function computeNextZonePct(): number {
   if (spreadState.kind === 'cover') return 0;
   if (spreadState.kind === 'backCover') return 0;
+  const isEndpaperOrModal =
+    spreadState.kind === 'settings' ||
+    spreadState.kind === 'backEndpaper' ||
+    spreadState.kind === 'frontEndpaper';
+  if (isEndpaperOrModal) return 20;
   return 5;
 }
 const nextZonePct = $derived(computeNextZonePct());
@@ -740,10 +750,10 @@ $effect(() => {
 									<p class="ep-about-title">Edelmore</p>
 									<p class="ep-about-subtitle">(Edelweiss + Evermore)</p>
 									<p class="ep-about-body">A private diary shaped like a book.</p>
-									<p class="ep-about-body">Made for Iona, Ada, &amp; Isla — and anyone else who wants a quiet place that belongs to them — by their dad, Andrew. <a href="https://atmarcus.net" class="ep-about-link">atmarcus.net</a></p>
+									<p class="ep-about-body">Made for Iona, Ada, &amp; Isla — and anyone else who wants a quiet place that belongs to them — by their dad, Andrew. atmarcus.net</p>
 									<p class="ep-about-body">Inspired by <em>Little House on the Prairie</em>, <em>All-of-a-Kind Family</em>, and <em>the diary of Anne Frank</em>.</p>
 									<p class="ep-about-body">Saves itself. Tells your story. Listens when your hands are tired.</p>
-									<p class="ep-about-body">Built with Universal Design for Learning. <a href="https://udlguidelines.cast.org" class="ep-about-link">udlguidelines.cast.org</a></p>
+									<p class="ep-about-body">Built with Universal Design for Learning. udlguidelines.cast.org</p>
 									<p class="ep-about-body">Runs at home.</p>
 								</div>
 							</div>
@@ -1043,7 +1053,7 @@ $effect(() => {
 		top: 50%;
 		left: 50%;
 		transform: translate(-50%, -50%);
-		width: 40%;
+		width: 50%;
 		container-type: inline-size;
 	}
 
@@ -1068,7 +1078,7 @@ $effect(() => {
 
 	.ep-about-section {
 		font-family: 'EB Garamond', Georgia, serif;
-		font-size: 4.5cqi;
+		font-size: 5cqi;
 		color: #6a4a28;
 		letter-spacing: 0.12em;
 		text-transform: uppercase;
@@ -1078,7 +1088,7 @@ $effect(() => {
 
 	.ep-about-title {
 		font-family: 'Rouge Script', cursive;
-		font-size: 12cqi;
+		font-size: 14cqi;
 		color: #3a2510;
 		font-weight: 400;
 		line-height: 1.0;
@@ -1088,7 +1098,7 @@ $effect(() => {
 
 	.ep-about-subtitle {
 		font-family: 'EB Garamond', Georgia, serif;
-		font-size: 4cqi;
+		font-size: 4.5cqi;
 		color: #6a4a28;
 		font-style: italic;
 		margin: 0 0 1cqi;
@@ -1097,17 +1107,11 @@ $effect(() => {
 
 	.ep-about-body {
 		font-family: 'EB Garamond', Georgia, serif;
-		font-size: 4cqi;
+		font-size: 4.5cqi;
 		color: #4a3520;
 		line-height: 1.4;
 		margin: 0;
 		flex-shrink: 0;
-	}
-
-	.ep-about-link {
-		color: #5a3a18;
-		text-decoration: underline;
-		text-underline-offset: 2px;
 	}
 
 	/* ── Shell stack suppression for endpaper states ────────────────────── */
