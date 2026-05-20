@@ -258,8 +258,8 @@ function computePrevZonePct(): number {
     spreadState.kind === 'backEndpaper' ||
     spreadState.kind === 'frontEndpaper';
   if (isEndpaperOrModal) return 10;
-  // Entry/TOC: 15% covers the outer margin without reaching the writing area.
-  return 15;
+  // 3% = just the page-stack strip. The 100rem overhang handles the wallpaper.
+  return 3;
 }
 const prevZonePct = $derived(computePrevZonePct());
 function computeNextZonePct(): number {
@@ -270,10 +270,12 @@ function computeNextZonePct(): number {
     spreadState.kind === 'backEndpaper' ||
     spreadState.kind === 'frontEndpaper';
   if (isEndpaperOrModal) return 10;
-  return 15;
+  return 3;
 }
 const nextZonePct = $derived(computeNextZonePct());
-const flipOverhangRem = $derived(spreadIndex === 0 ? 0 : 4);
+// 100rem extends the click zone into the wallpaper beside the book at any
+// desktop viewport size. overflow-x: clip on body prevents a scrollbar.
+const flipOverhangRem = $derived(spreadIndex === 0 ? 0 : 100);
 const entryDate = $derived(spreadState.kind === 'entry' ? spreadState.date : null);
 const entryDates = $derived(new Set(entryDatePreviews.map((e) => e.entry_date)));
 
