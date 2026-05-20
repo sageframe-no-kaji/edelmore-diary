@@ -71,34 +71,21 @@ describe('Spread click zones', () => {
   });
 });
 
+// Stacks moved to the persistent shell in +layout.svelte (ho-03 AT-01).
+// Spread no longer renders any per-leaf DOM for page-edge stacks.
 describe('Spread page-edge stacks', () => {
-  it('renders no stack leaves when spreadIndex and spreadCount are 0', () => {
+  it('accepts spreadIndex and spreadCount props without error', () => {
+    expect(() =>
+      render(Spread, { props: { ...baseProps, spreadIndex: 3, spreadCount: 10 } })
+    ).not.toThrow();
+  });
+
+  it('renders no stack-leaf DOM regardless of spreadIndex or spreadCount', () => {
     const { container } = render(Spread, {
-      props: { ...baseProps, spreadIndex: 0, spreadCount: 0 },
+      props: { ...baseProps, spreadIndex: 3, spreadCount: 10 },
     });
     expect(container.querySelectorAll('.stack-leaf')).toHaveLength(0);
-  });
-
-  it('renders left stack leaves equal to spreadIndex (up to MAX_STACK)', () => {
-    const { container } = render(Spread, {
-      props: { ...baseProps, spreadIndex: 3, spreadCount: 10 },
-    });
-    expect(container.querySelectorAll('.stack-left .stack-leaf')).toHaveLength(3);
-  });
-
-  it('renders right stack leaves equal to remaining spreads', () => {
-    const { container } = render(Spread, {
-      props: { ...baseProps, spreadIndex: 3, spreadCount: 10 },
-    });
-    // 10 - 3 - 1 = 6 remaining
-    expect(container.querySelectorAll('.stack-right .stack-leaf')).toHaveLength(6);
-  });
-
-  it('caps stack layers at MAX_STACK (12) regardless of spreadCount', () => {
-    const { container } = render(Spread, {
-      props: { ...baseProps, spreadIndex: 500, spreadCount: 1000 },
-    });
-    expect(container.querySelectorAll('.stack-left .stack-leaf')).toHaveLength(12);
-    expect(container.querySelectorAll('.stack-right .stack-leaf')).toHaveLength(12);
+    expect(container.querySelectorAll('.stack-left')).toHaveLength(0);
+    expect(container.querySelectorAll('.stack-right')).toHaveLength(0);
   });
 });

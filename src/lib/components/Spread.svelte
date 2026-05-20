@@ -8,10 +8,6 @@ type Props = {
   canFlipNext?: boolean;
   spreadIndex?: number;
   spreadCount?: number;
-  // Kept for API compatibility; unused until animation is re-added.
-  flipDuration?: number;
-  flipTrigger?: number;
-  flipTriggerDir?: 'next' | 'prev';
   // 0 = no zone rendered.
   prevZonePct?: number;
   nextZonePct?: number;
@@ -31,8 +27,6 @@ const {
   canFlipNext = true,
   spreadIndex = 0,
   spreadCount = 0,
-  flipTrigger = 0,
-  flipTriggerDir = 'next',
   prevZonePct = 0,
   nextZonePct = 0,
   overhangRem = 0,
@@ -40,42 +34,10 @@ const {
   leftPage,
   rightPage,
 }: Props = $props();
-
-const MAX_STACK = 12;
-const leftLayers = $derived(Math.min(spreadIndex, MAX_STACK));
-const rightLayers = $derived(Math.min(Math.max(spreadCount - spreadIndex - 1, 0), MAX_STACK));
-
-/* v8 ignore next 6 */
-$effect(() => {
-  void flipTrigger;
-  if (!flipTrigger) return;
-  if (flipTriggerDir === 'next') {
-    if (canFlipNext) onFlipNext();
-  } else {
-    if (canFlipPrev) onFlipPrev();
-  }
-});
 </script>
 
 <div class="spread-container">
 	<div class="spread">
-		<!-- Page-edge stacks (decorative) -->
-		{#if leftLayers > 0 && !hideLeftPage}
-			<div class="stack stack-left" aria-hidden="true">
-				{#each { length: leftLayers } as _, i}
-					<div class="stack-leaf" style="left: {-(i + 1) * 2}px; z-index: {-i}"></div>
-				{/each}
-			</div>
-		{/if}
-
-		{#if rightLayers > 0 && !hideLeftPage}
-			<div class="stack stack-right" aria-hidden="true">
-				{#each { length: rightLayers } as _, i}
-					<div class="stack-leaf" style="right: {-(i + 1) * 2}px; z-index: {-i}"></div>
-				{/each}
-			</div>
-		{/if}
-
 		<!-- Left page -->
 		<div class="page page-left" style={hideLeftPage ? 'visibility:hidden;background:transparent;border-right:none' : ''}>
 			{#if leftPage}{@render leftPage()}{/if}
@@ -119,6 +81,7 @@ $effect(() => {
 		width: 100%;
 		height: 100%;
 		overflow: visible;
+		z-index: 1;
 	}
 
 	.spread {
@@ -147,31 +110,6 @@ $effect(() => {
 
 	.page-left {
 		border-right: 1px solid #d4c5a0;
-	}
-
-	/* Page-edge stacks */
-	.stack {
-		position: absolute;
-		top: 0;
-		height: 100%;
-		pointer-events: none;
-	}
-
-	.stack-left {
-		left: 0;
-	}
-
-	.stack-right {
-		right: 0;
-	}
-
-	.stack-leaf {
-		position: absolute;
-		top: 0;
-		width: 2px;
-		height: 100%;
-		background: #f5ead0;
-		box-shadow: -1px 0 2px rgba(0, 0, 0, 0.08);
 	}
 
 	/* Click zones */

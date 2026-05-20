@@ -213,9 +213,9 @@ const canFlipNext = $derived(computeCanFlipNext());
 function getSpreadIndex(): number {
   if (spreadState.kind === 'cover') return 0;
   if (spreadState.kind === 'toc') return 1;
-  if (spreadState.kind === 'settings') return Math.max(spreadCount - 2, 2);
-  if (spreadState.kind === 'backCover') return Math.max(spreadCount - 1, 3);
-  if (spreadState.kind === 'about') return Math.max(spreadCount - 2, 2);
+  if (spreadState.kind === 'settings') return Math.max(spreadCount - 3, 2);
+  if (spreadState.kind === 'about') return Math.max(spreadCount - 2, 3);
+  if (spreadState.kind === 'backCover') return Math.max(spreadCount - 1, 4);
   const idx = entryDatePreviews.findIndex(
     (e) =>
       spreadState.kind === 'entry' &&
@@ -224,7 +224,14 @@ function getSpreadIndex(): number {
   return idx >= 0 ? idx + 2 : 2;
 }
 const spreadIndex = $derived(getSpreadIndex());
-const spreadCount = $derived(entryDatePreviews.length + 3);
+const spreadCount = $derived(entryDatePreviews.length + 5);
+
+const progress = $derived(
+  spreadCount > 1 ? Math.min(Math.max(spreadIndex / (spreadCount - 1), 0), 1) : 0
+);
+const compressedProgress = $derived(progress ** 0.85);
+const leftStack = $derived(compressedProgress);
+const rightStack = $derived(1 - compressedProgress);
 // Cover: whole right page (front cover) is the click target to open.
 // TOC: whole left page (Ex Libris) clicks back to cover; narrow right margin clicks forward.
 // Entry: narrow margin strips on both sides; text area in between is unobstructed.
@@ -505,7 +512,13 @@ $effect(() => {
 			if (Math.abs(delta) > 50) { if (delta < 0 && canFlipNext) onFlipNext(); else if (delta > 0 && canFlipPrev) onFlipPrev(); }
 		}}
 	>
-		<div class="book-shell relative w-full max-w-5xl aspect-[3/2]" style="--page-font-size: {draftFontSizeCqw}cqw">
+		<div
+				class="book-shell relative w-full max-w-5xl aspect-[3/2]"
+				class:is-closed={spreadState.kind === 'cover' || spreadState.kind === 'backCover'}
+				style="--page-font-size: {draftFontSizeCqw}cqw; --left-stack: {leftStack}; --right-stack: {rightStack};"
+			>
+				<div class="shell-stack shell-stack-left" aria-hidden="true"></div>
+				<div class="shell-stack shell-stack-right" aria-hidden="true"></div>
 			<Spread
 				{onFlipPrev}
 				{onFlipNext}
@@ -696,6 +709,7 @@ $effect(() => {
 					{/if}
 				{/snippet}
 			</Spread>
+				<div class="shell-seam" aria-hidden="true"></div>
 			{#if spreadState.kind === 'entry'}
 				<div class="spell-anchor">
 					<div class={`spell-panel ${spellsOpen ? 'is-open' : 'is-closed'}`} role="note" aria-label="Magic writing spells">
@@ -1093,6 +1107,73 @@ $effect(() => {
 
 	.book-shell {
 		container-type: inline-size;
+	}
+
+	/* ── Shell stacks (procedural, no DOM per leaf) ──────────────────────── */
+
+	.shell-stack {
+		position: absolute;
+		top: 0;
+		bottom: 0;
+		pointer-events: none;
+		z-index: 0;
+	}
+
+	.shell-stack-left {
+		left: 0;
+		width: calc(var(--left-stack) * 3cqw);
+		background:
+			linear-gradient(to right, rgba(0, 0, 0, 0.10), rgba(0, 0, 0, 0) 80%),
+			repeating-linear-gradient(
+				to right,
+				#f0e3c6 0,
+				#f0e3c6 1px,
+				#e8d9b8 1px,
+				#e8d9b8 2px
+			);
+		mask-image: linear-gradient(to bottom, rgba(0, 0, 0, 0.95), rgba(0, 0, 0, 1), rgba(0, 0, 0, 0.95));
+	}
+
+	.shell-stack-right {
+		right: 0;
+		width: calc(var(--right-stack) * 3cqw);
+		background:
+			linear-gradient(to left, rgba(0, 0, 0, 0.10), rgba(0, 0, 0, 0) 80%),
+			repeating-linear-gradient(
+				to left,
+				#f0e3c6 0,
+				#f0e3c6 1px,
+				#e8d9b8 1px,
+				#e8d9b8 2px
+			);
+		mask-image: linear-gradient(to bottom, rgba(0, 0, 0, 0.95), rgba(0, 0, 0, 1), rgba(0, 0, 0, 0.95));
+	}
+
+	/* ── Gutter seam (persistent, above spread, below modals) ───────────── */
+
+	.shell-seam {
+		position: absolute;
+		top: 0;
+		bottom: 0;
+		left: 50%;
+		width: 6px;
+		transform: translateX(-50%);
+		pointer-events: none;
+		z-index: 5;
+		background:
+			linear-gradient(
+				to right,
+				rgba(0, 0, 0, 0.18) 0%,
+				rgba(0, 0, 0, 0.05) 30%,
+				rgba(0, 0, 0, 0.08) 50%,
+				rgba(0, 0, 0, 0.05) 70%,
+				rgba(0, 0, 0, 0.18) 100%
+			);
+	}
+
+	.book-shell.is-closed .shell-seam,
+	.book-shell.is-closed .shell-stack {
+		display: none;
 	}
 
 	.spell-flower {
