@@ -132,15 +132,38 @@ function onFlipNext() {
       entryPageSpread += 1;
     } else if (nextDate) {
       navigateTo(nextDate);
-    } else if (entryDatePreviews.length > 0) {
-      spreadState = { kind: 'backCover' };
+    } else {
+      // Last entry — flip into the end pages of the book.
+      prevSpreadState = spreadState;
+      spreadState = { kind: 'settings' };
+      settingsWarning = false;
+      settingsWarningText = 'You have unsaved changes.';
+      settingsBackArmed = false;
+      draftUsername = username;
+      draftDiaryTitle = diaryTitle;
+      draftFontSizeCqw = fontSizeCqw;
+      draftJournalFont = journalFont as JournalFont;
+      draftPin = '';
+      draftConfirm = '';
     }
+  } else if (spreadState.kind === 'settings') {
+    spreadState = { kind: 'about' };
+  } else if (spreadState.kind === 'about') {
+    spreadState = { kind: 'backCover' };
   }
 }
 
 function onFlipPrev() {
   if (spreadState.kind === 'backCover') {
-    void navigateTo(todayIso());
+    spreadState = { kind: 'about' };
+    return;
+  }
+  if (spreadState.kind === 'about') {
+    spreadState = { kind: 'settings' };
+    return;
+  }
+  if (spreadState.kind === 'settings') {
+    closeSettings();
     return;
   }
   if (spreadState.kind === 'entry') {
@@ -195,17 +218,12 @@ function closeSettings() {
 }
 
 function computeCanFlipPrev(): boolean {
-  return (
-    spreadState.kind !== 'cover' && spreadState.kind !== 'settings' && spreadState.kind !== 'about'
-  );
+  return spreadState.kind !== 'cover';
 }
 const canFlipPrev = $derived(computeCanFlipPrev());
 function computeCanFlipNext(): boolean {
-  if (spreadState.kind === 'cover') return true;
-  if (spreadState.kind === 'toc') return entryDatePreviews.length > 0;
-  if (spreadState.kind === 'settings') return false;
   if (spreadState.kind === 'backCover') return false;
-  if (spreadState.kind === 'about') return false;
+  if (spreadState.kind === 'toc') return entryDatePreviews.length > 0;
   return true;
 }
 const canFlipNext = $derived(computeCanFlipNext());
@@ -236,19 +254,15 @@ const rightStack = $derived(1 - compressedProgress);
 // TOC: whole left page (Ex Libris) clicks back to cover; narrow right margin clicks forward.
 // Entry: narrow margin strips on both sides; text area in between is unobstructed.
 function computePrevZonePct(): number {
-  if (spreadState.kind === 'settings') return 0;
-  if (spreadState.kind === 'about') return 0;
+  if (spreadState.kind === 'cover') return 0;
   if (spreadState.kind === 'backCover') return 8;
-  if (spreadIndex === 0) return 0;
-  if (spreadIndex === 1) return 50;
+  if (spreadState.kind === 'toc') return 50;
   return 5;
 }
 const prevZonePct = $derived(computePrevZonePct());
 function computeNextZonePct(): number {
-  if (spreadState.kind === 'settings') return 0;
-  if (spreadState.kind === 'about') return 0;
+  if (spreadState.kind === 'cover') return 0;
   if (spreadState.kind === 'backCover') return 0;
-  if (spreadIndex === 0) return 0;
   return 5;
 }
 const nextZonePct = $derived(computeNextZonePct());
@@ -538,6 +552,10 @@ $effect(() => {
 						<ExLibrisPage username={username} />
 					{:else if spreadState.kind === 'settings'}
 						<div class="h-full w-full bg-transparent"></div>
+					{:else if spreadState.kind === 'about'}
+						<div class="relative h-full w-full">
+							<img src="/girls.png" alt="" aria-hidden="true" class="about-girls-left" />
+						</div>
 					{:else if spreadState.kind === 'entry'}
 						{@const leftStart = entryPageSpread === 0 ? 0 : (splitPoints[entryPageSpread * 2 - 1] ?? 0)}
 						{@const leftEnd = splitPoints[entryPageSpread * 2]}
@@ -689,7 +707,6 @@ $effect(() => {
 						</div>
 					{:else if spreadState.kind === 'about'}
 						<div class="absolute inset-0 px-8 pt-10 pb-8 overflow-hidden font-serif flex flex-col">
-							<img src="/girls.png" alt="" aria-hidden="true" class="about-girls" />
 							<div class="flex-1 flex flex-col justify-center gap-6 text-ink-900">
 								<h1 class="about-title">Edelmore</h1>
 								<p class="about-subtitle">A private diary shaped like a book.</p>
@@ -710,7 +727,7 @@ $effect(() => {
 				{/snippet}
 			</Spread>
 				<div class="shell-seam" aria-hidden="true"></div>
-			{#if spreadState.kind === 'entry'}
+			{#if spreadState.kind !== 'cover' && spreadState.kind !== 'backCover'}
 				<div class="spell-anchor">
 					<div class={`spell-panel ${spellsOpen ? 'is-open' : 'is-closed'}`} role="note" aria-label="Magic writing spells">
 						<button
@@ -743,7 +760,9 @@ $effect(() => {
 									<li><span class="spell-code">_word_</span> <u>extra important</u></li>
 									<li><span class="spell-code">~word~</span> <s>crossed out</s></li>
 							</ul>
-							<button type="button" class="spell-about" onclick={openAbout} aria-label="About Edelmore">About</button>
+							{#if spreadState.kind !== 'about'}
+								<button type="button" class="spell-about" onclick={openAbout} aria-label="About Edelmore">About</button>
+							{/if}
 						</div>
 					</div>
 				</div>
@@ -953,11 +972,11 @@ $effect(() => {
 		color: #5c4510;
 	}
 
-	.about-girls {
+	.about-girls-left {
 		position: absolute;
-		left: 4%;
-		top: 22%;
-		width: 25%;
+		bottom: 6%;
+		right: 4%;
+		width: 54%;
 		height: auto;
 		object-fit: contain;
 		pointer-events: none;
@@ -1120,33 +1139,47 @@ $effect(() => {
 	}
 
 	.shell-stack-left {
-		left: 0;
+		left: calc(-1 * var(--left-stack) * 3cqw);
 		width: calc(var(--left-stack) * 3cqw);
 		background:
-			linear-gradient(to right, rgba(0, 0, 0, 0.10), rgba(0, 0, 0, 0) 80%),
+			linear-gradient(to right, rgba(0, 0, 0, 0) 50%, rgba(0, 0, 0, 0.08) 100%),
 			repeating-linear-gradient(
 				to right,
-				#f0e3c6 0,
-				#f0e3c6 1px,
-				#e8d9b8 1px,
-				#e8d9b8 2px
+				#f0e3c6 0,      #f0e3c6 0.5px,
+				#e8d5a8 0.5px,  #e8d5a8 1px,
+				#f5eacc 1px,    #f5eacc 1.5px,
+				#ebdbb0 1.5px,  #ebdbb0 2px,
+				#f2e6c9 2px,    #f2e6c9 2.5px,
+				#e5d3a4 2.5px,  #e5d3a4 3px,
+				#f0e2c4 3px,    #f0e2c4 3.5px,
+				#e9dab0 3.5px,  #e9dab0 4px
 			);
-		mask-image: linear-gradient(to bottom, rgba(0, 0, 0, 0.95), rgba(0, 0, 0, 1), rgba(0, 0, 0, 0.95));
+		mask-image:
+			linear-gradient(to right, rgba(0, 0, 0, 0.45) 0%, rgba(0, 0, 0, 0.85) 30%, black 60%),
+			linear-gradient(to bottom, transparent 0%, rgba(0, 0, 0, 0.8) 2%, black 5%, black 95%, rgba(0, 0, 0, 0.8) 98%, transparent 100%);
+		mask-composite: intersect;
 	}
 
 	.shell-stack-right {
-		right: 0;
+		right: calc(-1 * var(--right-stack) * 3cqw);
 		width: calc(var(--right-stack) * 3cqw);
 		background:
-			linear-gradient(to left, rgba(0, 0, 0, 0.10), rgba(0, 0, 0, 0) 80%),
+			linear-gradient(to left, rgba(0, 0, 0, 0) 50%, rgba(0, 0, 0, 0.08) 100%),
 			repeating-linear-gradient(
 				to left,
-				#f0e3c6 0,
-				#f0e3c6 1px,
-				#e8d9b8 1px,
-				#e8d9b8 2px
+				#f0e3c6 0,      #f0e3c6 0.5px,
+				#e8d5a8 0.5px,  #e8d5a8 1px,
+				#f5eacc 1px,    #f5eacc 1.5px,
+				#ebdbb0 1.5px,  #ebdbb0 2px,
+				#f2e6c9 2px,    #f2e6c9 2.5px,
+				#e5d3a4 2.5px,  #e5d3a4 3px,
+				#f0e2c4 3px,    #f0e2c4 3.5px,
+				#e9dab0 3.5px,  #e9dab0 4px
 			);
-		mask-image: linear-gradient(to bottom, rgba(0, 0, 0, 0.95), rgba(0, 0, 0, 1), rgba(0, 0, 0, 0.95));
+		mask-image:
+			linear-gradient(to left, rgba(0, 0, 0, 0.45) 0%, rgba(0, 0, 0, 0.85) 30%, black 60%),
+			linear-gradient(to bottom, transparent 0%, rgba(0, 0, 0, 0.8) 2%, black 5%, black 95%, rgba(0, 0, 0, 0.8) 98%, transparent 100%);
+		mask-composite: intersect;
 	}
 
 	/* ── Gutter seam (persistent, above spread, below modals) ───────────── */
