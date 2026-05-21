@@ -561,9 +561,11 @@ $effect(() => {
 					{#if spreadState.kind === 'cover'}
 						<!-- blank — front cover fills only the right page -->
 					{:else if spreadState.kind === 'frontEndpaper'}
-						<div class="endpaper-fill endpaper-fill-left">
-							<div class="endpaper-plate-wrap">
-								<ExLibrisPage username={username} transparent={true} />
+						<div class="endpaper-wrap">
+							<div class="endpaper-fill endpaper-fill-left">
+								<div class="endpaper-plate-wrap">
+									<ExLibrisPage username={username} transparent={true} />
+								</div>
 							</div>
 						</div>
 					{:else if spreadState.kind === 'toc'}
@@ -584,8 +586,10 @@ $effect(() => {
 					{:else if spreadState.kind === 'settings'}
 						<div class="h-full w-full bg-transparent"></div>
 					{:else if spreadState.kind === 'backEndpaper'}
-						<div class="endpaper-fill endpaper-fill-left">
-							<img src="/girls.png" alt="" aria-hidden="true" class="about-girls-left" />
+						<div class="endpaper-wrap">
+							<div class="endpaper-fill endpaper-fill-left">
+								<img src="/girls.png" alt="" aria-hidden="true" class="about-girls-left" />
+							</div>
 						</div>
 					{:else if spreadState.kind === 'backCover'}
 						<div role="presentation" class="h-full w-full">
@@ -715,7 +719,7 @@ $effect(() => {
 							{/if}
 						{/if}
 					{:else if spreadState.kind === 'frontEndpaper'}
-						<div class="endpaper-fill endpaper-fill-right"></div>
+						<div class="endpaper-wrap"><div class="endpaper-fill endpaper-fill-right"></div></div>
 					{:else if spreadState.kind === 'toc'}
 						<TocPage entries={entryDatePreviews} onNavigate={navigateTo} />
 					{:else if spreadState.kind === 'cover'}
@@ -723,7 +727,8 @@ $effect(() => {
 							<CoverPage config={activeCover} {username} {diaryTitle} showSettings={true} buttonLabel="Turn to today" onOpenSettings={() => { void navigateTo(todayIso()); }} />
 						</div>
 					{:else if spreadState.kind === 'backEndpaper'}
-						<div class="endpaper-fill endpaper-fill-right">
+						<div class="endpaper-wrap">
+							<div class="endpaper-fill endpaper-fill-right">
 							<div class="back-label-sticker">
 								<img src="/label.png" alt="" aria-hidden="true" class="back-label-img" />
 								<div class="back-label-text">
@@ -738,6 +743,7 @@ $effect(() => {
 									<p class="ep-about-body">Runs at home.</p>
 								</div>
 							</div>
+						</div>
 						</div>
 					{/if}
 				{/snippet}
@@ -975,6 +981,13 @@ $effect(() => {
 	}
 
 	/* ── Endpaper pages (front + back) ──────────────────────────────────── */
+
+	.endpaper-wrap {
+		position: absolute;
+		inset: 0;
+		border-radius: 5px;
+		overflow: hidden;
+	}
 
 	.endpaper-fill {
 		position: absolute;
@@ -1312,6 +1325,10 @@ $effect(() => {
 		/* spell-anchor uses cqi units; book-frame is its container since AT-01
 		   moved spell-anchor out of book-shell. */
 		container-type: inline-size;
+		filter:
+			drop-shadow(0 20px 60px rgba(0, 0, 0, 0.45))
+			drop-shadow(0 6px 18px  rgba(0, 0, 0, 0.30))
+			drop-shadow(0 2px 4px   rgba(0, 0, 0, 0.20));
 	}
 
 	.book-frame.is-closed {
