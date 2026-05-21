@@ -1,6 +1,5 @@
 <script lang="ts">
-import { goto } from '$app/navigation';
-import { invalidateAll } from '$app/navigation';
+import { goto, invalidateAll, onNavigate } from '$app/navigation';
 import { page } from '$app/stores';
 import CalendarModal from '$lib/components/CalendarModal.svelte';
 import CoverPage from '$lib/components/CoverPage.svelte';
@@ -12,7 +11,7 @@ import { todayIso } from '$lib/dates.js';
 import type { EntryDatePreview } from '$lib/db.js';
 import { findSplitIndex, snapToWordBreak } from '$lib/overflow.js';
 import type { Snippet } from 'svelte';
-import { onMount, tick, untrack } from 'svelte';
+import { flushSync, onMount, tick, untrack } from 'svelte';
 
 type SpreadState =
   | { kind: 'cover' }
@@ -24,6 +23,45 @@ type SpreadState =
   | { kind: 'backCover' };
 
 const { children }: { children: Snippet } = $props();
+
+// ── View Transitions ─────────────────────────────────────────────────────────
+
+let flipDirection: 'forward' | 'backward' = $state('forward');
+
+$effect(() => {
+  if (typeof document !== 'undefined') {
+    document.documentElement.dataset.flipDirection = flipDirection;
+  }
+});
+
+function withFlip(direction: 'forward' | 'backward', mutate: () => void) {
+  flipDirection = direction;
+  if (typeof document === 'undefined') {
+    mutate();
+    return;
+  }
+  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    mutate();
+    return;
+  }
+  if (!document.startViewTransition) {
+    mutate();
+    return;
+  }
+  document.startViewTransition(() => flushSync(mutate));
+}
+
+onNavigate((navigation) => {
+  if (typeof document === 'undefined') return;
+  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  if (!document.startViewTransition) return;
+  return new Promise((resolve) => {
+    document.startViewTransition(async () => {
+      resolve();
+      await navigation.complete;
+    });
+  });
+});
 
 let spreadState: SpreadState = $state(
   untrack(() =>
@@ -123,46 +161,64 @@ async function navigateTo(date: string) {
 
 function onFlipNext() {
   if (spreadState.kind === 'cover') {
-    spreadState = { kind: 'frontEndpaper' };
+    withFlip('forward', () => {
+      spreadState = { kind: 'frontEndpaper' };
+    });
   } else if (spreadState.kind === 'frontEndpaper') {
-    spreadState = { kind: 'toc' };
+    withFlip('forward', () => {
+      spreadState = { kind: 'toc' };
+    });
   } else if (spreadState.kind === 'toc') {
     if (entryDatePreviews.length > 0) {
+      flipDirection = 'forward';
       navigateTo(entryDatePreviews[0].entry_date);
     }
   } else if (spreadState.kind === 'entry') {
     if (entryPageSpread < entrySpreadCount - 1) {
-      entryPageSpread += 1;
+      withFlip('forward', () => {
+        entryPageSpread += 1;
+      });
     } else if (nextDate) {
+      flipDirection = 'forward';
       navigateTo(nextDate);
     } else {
       // Last entry — flip into the back of the book.
-      prevSpreadState = spreadState;
-      spreadState = { kind: 'settings' };
-      settingsWarning = false;
-      settingsWarningText = 'You have unsaved changes.';
-      settingsBackArmed = false;
-      draftUsername = username;
-      draftDiaryTitle = diaryTitle;
-      draftFontSizeCqw = fontSizeCqw;
-      draftJournalFont = journalFont as JournalFont;
-      draftPin = '';
-      draftConfirm = '';
+      withFlip('forward', () => {
+        prevSpreadState = spreadState;
+        spreadState = { kind: 'settings' };
+        settingsWarning = false;
+        settingsWarningText = 'You have unsaved changes.';
+        settingsBackArmed = false;
+        draftUsername = username;
+        draftDiaryTitle = diaryTitle;
+        draftFontSizeCqw = fontSizeCqw;
+        draftJournalFont = journalFont as JournalFont;
+        draftPin = '';
+        draftConfirm = '';
+      });
     }
   } else if (spreadState.kind === 'settings') {
-    spreadState = { kind: 'backEndpaper' };
+    withFlip('forward', () => {
+      spreadState = { kind: 'backEndpaper' };
+    });
   } else if (spreadState.kind === 'backEndpaper') {
-    spreadState = { kind: 'backCover' };
+    withFlip('forward', () => {
+      spreadState = { kind: 'backCover' };
+    });
   }
 }
 
 function onFlipPrev() {
   if (spreadState.kind === 'backCover') {
-    spreadState = { kind: 'backEndpaper' };
+    withFlip('backward', () => {
+      spreadState = { kind: 'backEndpaper' };
+    });
     return;
   }
   if (spreadState.kind === 'backEndpaper') {
-    spreadState = { kind: 'settings' };
+    withFlip('backward', () => {
+      spreadState = { kind: 'settings' };
+    });
     return;
   }
   if (spreadState.kind === 'settings') {
@@ -171,31 +227,42 @@ function onFlipPrev() {
   }
   if (spreadState.kind === 'entry') {
     if (entryPageSpread > 0) {
-      entryPageSpread -= 1;
+      withFlip('backward', () => {
+        entryPageSpread -= 1;
+      });
     } else if (prevDate) {
+      flipDirection = 'backward';
       navigateTo(prevDate);
     } else {
-      spreadState = { kind: 'toc' };
+      withFlip('backward', () => {
+        spreadState = { kind: 'toc' };
+      });
     }
   } else if (spreadState.kind === 'toc') {
-    spreadState = { kind: 'frontEndpaper' };
+    withFlip('backward', () => {
+      spreadState = { kind: 'frontEndpaper' };
+    });
   } else if (spreadState.kind === 'frontEndpaper') {
-    spreadState = { kind: 'cover' };
+    withFlip('backward', () => {
+      spreadState = { kind: 'cover' };
+    });
   }
 }
 
 function openSettings() {
-  prevSpreadState = spreadState;
-  spreadState = { kind: 'settings' };
-  settingsWarning = false;
-  settingsWarningText = 'You have unsaved changes.';
-  settingsBackArmed = false;
-  draftUsername = username;
-  draftDiaryTitle = diaryTitle;
-  draftFontSizeCqw = fontSizeCqw;
-  draftJournalFont = journalFont as JournalFont;
-  draftPin = '';
-  draftConfirm = '';
+  withFlip('forward', () => {
+    prevSpreadState = spreadState;
+    spreadState = { kind: 'settings' };
+    settingsWarning = false;
+    settingsWarningText = 'You have unsaved changes.';
+    settingsBackArmed = false;
+    draftUsername = username;
+    draftDiaryTitle = diaryTitle;
+    draftFontSizeCqw = fontSizeCqw;
+    draftJournalFont = journalFont as JournalFont;
+    draftPin = '';
+    draftConfirm = '';
+  });
 }
 
 function closeSettings() {
@@ -205,11 +272,13 @@ function closeSettings() {
     settingsWarningText = 'You have unsaved changes.';
     return;
   }
-  spreadState = prevSpreadState ?? { kind: 'cover' };
-  prevSpreadState = null;
-  settingsWarning = false;
-  settingsBackArmed = false;
-  settingsWarningText = 'You have unsaved changes.';
+  withFlip('backward', () => {
+    spreadState = prevSpreadState ?? { kind: 'cover' };
+    prevSpreadState = null;
+    settingsWarning = false;
+    settingsBackArmed = false;
+    settingsWarningText = 'You have unsaved changes.';
+  });
 }
 
 function computeCanFlipPrev(): boolean {
@@ -443,8 +512,10 @@ async function saveSettings() {
   draftConfirm = '';
   settingsWarning = false;
   settingsBackArmed = false;
-  spreadState = prevSpreadState ?? { kind: 'cover' };
-  prevSpreadState = null;
+  withFlip('backward', () => {
+    spreadState = prevSpreadState ?? { kind: 'cover' };
+    prevSpreadState = null;
+  });
   await invalidateAll();
 }
 
@@ -724,7 +795,7 @@ $effect(() => {
 						<TocPage entries={entryDatePreviews} onNavigate={navigateTo} />
 					{:else if spreadState.kind === 'cover'}
 						<div role="presentation" class="h-full w-full cursor-pointer" onclick={onFlipNext}>
-							<CoverPage config={activeCover} {username} {diaryTitle} showSettings={true} buttonLabel="Turn to today" onOpenSettings={() => { void navigateTo(todayIso()); }} />
+							<CoverPage config={activeCover} {username} {diaryTitle} showSettings={true} buttonLabel="Turn to today" onOpenSettings={() => { flipDirection = 'forward'; void navigateTo(todayIso()); }} />
 						</div>
 					{:else if spreadState.kind === 'backEndpaper'}
 						<div class="endpaper-wrap">
@@ -784,10 +855,10 @@ $effect(() => {
 									<li><span class="spell-code">~word~</span> <s>crossed out</s></li>
 							</ul>
 							<div class="spell-buttons">
-								<button type="button" onclick={() => { void navigateTo(todayIso()); }} class="spell-today" aria-label="Turn to today">
+								<button type="button" onclick={() => { flipDirection = 'forward'; void navigateTo(todayIso()); }} class="spell-today" aria-label="Turn to today">
 									<img src="/now.svg" style="width: 100%; height: 100%; object-fit: contain" alt="" />
 								</button>
-								<button type="button" onclick={() => { spreadState = { kind: 'toc' }; }} class="spell-entries" aria-label="Recent entries">
+								<button type="button" onclick={() => { withFlip('backward', () => { spreadState = { kind: 'toc' }; }); }} class="spell-entries" aria-label="Recent entries">
 									<img src="/entries.svg" style="width: 100%; height: 100%; object-fit: contain" alt="" />
 								</button>
 								<button type="button" onclick={openSettings} class="spell-settings" aria-label="Settings">

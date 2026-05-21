@@ -28,3 +28,93 @@ body {
   background-color: var(--color-cream-50);
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23noise)' opacity='0.08'/%3E%3C/svg%3E");
 }
+
+/* ── View Transitions: physical page turn ────────────────────────────────── */
+
+/* Disable default cross-fade on the spread target */
+::view-transition-old(page-spread),
+::view-transition-new(page-spread) {
+  animation: none;
+  mix-blend-mode: normal;
+  backface-visibility: hidden;
+  transform-style: preserve-3d;
+  will-change: transform;
+  contain: paint;
+}
+
+/* Forward turn: outgoing rotates leftward around left edge */
+[data-flip-direction="forward"]::view-transition-old(page-spread) {
+  animation: 360ms cubic-bezier(0.4, 0.0, 0.2, 1) both flip-out-forward;
+  transform-origin: left center;
+}
+
+[data-flip-direction="forward"]::view-transition-new(page-spread) {
+  animation: 360ms cubic-bezier(0.4, 0.0, 0.2, 1) both flip-in-forward;
+  transform-origin: left center;
+}
+
+/* Backward turn: outgoing rotates rightward around right edge */
+[data-flip-direction="backward"]::view-transition-old(page-spread) {
+  animation: 360ms cubic-bezier(0.4, 0.0, 0.2, 1) both flip-out-backward;
+  transform-origin: right center;
+}
+
+[data-flip-direction="backward"]::view-transition-new(page-spread) {
+  animation: 360ms cubic-bezier(0.4, 0.0, 0.2, 1) both flip-in-backward;
+  transform-origin: right center;
+}
+
+@keyframes flip-out-forward {
+  0% {
+    transform: perspective(1400px) rotateY(0deg);
+  }
+  100% {
+    transform: perspective(1400px) rotateY(-100deg);
+  }
+}
+
+@keyframes flip-in-forward {
+  0% {
+    transform: perspective(1400px) rotateY(-2deg);
+    opacity: 1;
+  }
+  50% {
+    transform: perspective(1400px) rotateY(-1deg);
+    opacity: 1;
+  }
+  100% {
+    transform: perspective(1400px) rotateY(0deg);
+    opacity: 1;
+  }
+}
+
+@keyframes flip-out-backward {
+  0% {
+    transform: perspective(1400px) rotateY(0deg);
+  }
+  100% {
+    transform: perspective(1400px) rotateY(100deg);
+  }
+}
+
+@keyframes flip-in-backward {
+  0% {
+    transform: perspective(1400px) rotateY(2deg);
+    opacity: 1;
+  }
+  50% {
+    transform: perspective(1400px) rotateY(1deg);
+    opacity: 1;
+  }
+  100% {
+    transform: perspective(1400px) rotateY(0deg);
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-old(page-spread),
+  ::view-transition-new(page-spread) {
+    animation: none !important;
+  }
+}
