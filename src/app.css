@@ -1,6 +1,11 @@
 @import url("https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400..800;1,400..800&family=Cedarville+Cursive&family=Rouge+Script&display=swap");
 @import "tailwindcss";
 
+/* Prevent the large flip-zone overhang from creating a horizontal scrollbar. */
+body {
+  overflow-x: clip;
+}
+
 @theme {
   --font-serif: "EB Garamond", Georgia, serif;
 

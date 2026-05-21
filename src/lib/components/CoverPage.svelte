@@ -7,6 +7,7 @@ type Props = {
   username: string;
   diaryTitle?: string;
   showSettings?: boolean;
+  buttonLabel?: string;
   backCover?: boolean;
   onOpenSettings?: () => void;
 };
@@ -16,6 +17,7 @@ const {
   username,
   diaryTitle = 'D I A R Y',
   showSettings = false,
+  buttonLabel = 'Open settings',
   backCover = false,
   onOpenSettings,
 }: Props = $props();
@@ -71,7 +73,7 @@ onMount(() => {
         <button
           type="button"
           class="settings-link"
-          aria-label="Open settings"
+          aria-label={buttonLabel}
           onclick={(e) => {
             e.stopPropagation();
             onOpenSettings?.();

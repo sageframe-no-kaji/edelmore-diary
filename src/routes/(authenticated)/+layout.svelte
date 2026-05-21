@@ -16,11 +16,12 @@ import { onMount, tick, untrack } from 'svelte';
 
 type SpreadState =
   | { kind: 'cover' }
+  | { kind: 'frontEndpaper' }
   | { kind: 'toc' }
   | { kind: 'entry'; date: string }
   | { kind: 'settings' }
-  | { kind: 'backCover' }
-  | { kind: 'about' };
+  | { kind: 'backEndpaper' }
+  | { kind: 'backCover' };
 
 const { children }: { children: Snippet } = $props();
 
@@ -122,7 +123,9 @@ async function navigateTo(date: string) {
 
 function onFlipNext() {
   if (spreadState.kind === 'cover') {
-    void navigateTo(todayIso());
+    spreadState = { kind: 'frontEndpaper' };
+  } else if (spreadState.kind === 'frontEndpaper') {
+    spreadState = { kind: 'toc' };
   } else if (spreadState.kind === 'toc') {
     if (entryDatePreviews.length > 0) {
       navigateTo(entryDatePreviews[0].entry_date);
@@ -132,15 +135,38 @@ function onFlipNext() {
       entryPageSpread += 1;
     } else if (nextDate) {
       navigateTo(nextDate);
-    } else if (entryDatePreviews.length > 0) {
-      spreadState = { kind: 'backCover' };
+    } else {
+      // Last entry — flip into the back of the book.
+      prevSpreadState = spreadState;
+      spreadState = { kind: 'settings' };
+      settingsWarning = false;
+      settingsWarningText = 'You have unsaved changes.';
+      settingsBackArmed = false;
+      draftUsername = username;
+      draftDiaryTitle = diaryTitle;
+      draftFontSizeCqw = fontSizeCqw;
+      draftJournalFont = journalFont as JournalFont;
+      draftPin = '';
+      draftConfirm = '';
     }
+  } else if (spreadState.kind === 'settings') {
+    spreadState = { kind: 'backEndpaper' };
+  } else if (spreadState.kind === 'backEndpaper') {
+    spreadState = { kind: 'backCover' };
   }
 }
 
 function onFlipPrev() {
   if (spreadState.kind === 'backCover') {
-    void navigateTo(todayIso());
+    spreadState = { kind: 'backEndpaper' };
+    return;
+  }
+  if (spreadState.kind === 'backEndpaper') {
+    spreadState = { kind: 'settings' };
+    return;
+  }
+  if (spreadState.kind === 'settings') {
+    closeSettings();
     return;
   }
   if (spreadState.kind === 'entry') {
@@ -152,18 +178,10 @@ function onFlipPrev() {
       spreadState = { kind: 'toc' };
     }
   } else if (spreadState.kind === 'toc') {
+    spreadState = { kind: 'frontEndpaper' };
+  } else if (spreadState.kind === 'frontEndpaper') {
     spreadState = { kind: 'cover' };
   }
-}
-
-function openAbout() {
-  prevSpreadState = spreadState;
-  spreadState = { kind: 'about' };
-}
-
-function closeAbout() {
-  spreadState = prevSpreadState ?? { kind: 'cover' };
-  prevSpreadState = null;
 }
 
 function openSettings() {
@@ -195,57 +213,59 @@ function closeSettings() {
 }
 
 function computeCanFlipPrev(): boolean {
-  return (
-    spreadState.kind !== 'cover' && spreadState.kind !== 'settings' && spreadState.kind !== 'about'
-  );
+  return spreadState.kind !== 'cover';
 }
 const canFlipPrev = $derived(computeCanFlipPrev());
 function computeCanFlipNext(): boolean {
-  if (spreadState.kind === 'cover') return true;
-  if (spreadState.kind === 'toc') return entryDatePreviews.length > 0;
-  if (spreadState.kind === 'settings') return false;
   if (spreadState.kind === 'backCover') return false;
-  if (spreadState.kind === 'about') return false;
+  if (spreadState.kind === 'toc') return entryDatePreviews.length > 0;
   return true;
 }
 const canFlipNext = $derived(computeCanFlipNext());
 
 function getSpreadIndex(): number {
   if (spreadState.kind === 'cover') return 0;
-  if (spreadState.kind === 'toc') return 1;
-  if (spreadState.kind === 'settings') return Math.max(spreadCount - 2, 2);
-  if (spreadState.kind === 'backCover') return Math.max(spreadCount - 1, 3);
-  if (spreadState.kind === 'about') return Math.max(spreadCount - 2, 2);
+  if (spreadState.kind === 'frontEndpaper') return 1;
+  if (spreadState.kind === 'toc') return 2;
+  if (spreadState.kind === 'settings') return Math.max(spreadCount - 3, 3);
+  if (spreadState.kind === 'backEndpaper') return Math.max(spreadCount - 2, 4);
+  if (spreadState.kind === 'backCover') return Math.max(spreadCount - 1, 5);
   const idx = entryDatePreviews.findIndex(
     (e) =>
       spreadState.kind === 'entry' &&
       e.entry_date === (spreadState as { kind: 'entry'; date: string }).date
   );
-  return idx >= 0 ? idx + 2 : 2;
+  return idx >= 0 ? idx + 3 : 3;
 }
 const spreadIndex = $derived(getSpreadIndex());
-const spreadCount = $derived(entryDatePreviews.length + 3);
+const spreadCount = $derived(entryDatePreviews.length + 6);
+
+const progress = $derived(
+  spreadCount > 1 ? Math.min(Math.max(spreadIndex / (spreadCount - 1), 0), 1) : 0
+);
+const compressedProgress = $derived(progress ** 0.85);
+const leftStack = $derived(compressedProgress);
+const rightStack = $derived(1 - compressedProgress);
 // Cover: whole right page (front cover) is the click target to open.
 // TOC: whole left page (Ex Libris) clicks back to cover; narrow right margin clicks forward.
 // Entry: narrow margin strips on both sides; text area in between is unobstructed.
 function computePrevZonePct(): number {
-  if (spreadState.kind === 'settings') return 0;
-  if (spreadState.kind === 'about') return 0;
+  if (spreadState.kind === 'cover') return 0;
   if (spreadState.kind === 'backCover') return 8;
-  if (spreadIndex === 0) return 0;
-  if (spreadIndex === 1) return 50;
-  return 5;
+  if (spreadState.kind === 'toc') return 50;
+  // 3% = page-stack strip only. 100rem overhang covers leather frame + wallpaper.
+  return 3;
 }
 const prevZonePct = $derived(computePrevZonePct());
 function computeNextZonePct(): number {
-  if (spreadState.kind === 'settings') return 0;
-  if (spreadState.kind === 'about') return 0;
+  if (spreadState.kind === 'cover') return 0;
   if (spreadState.kind === 'backCover') return 0;
-  if (spreadIndex === 0) return 0;
-  return 5;
+  return 3;
 }
 const nextZonePct = $derived(computeNextZonePct());
-const flipOverhangRem = $derived(spreadIndex === 0 ? 0 : 4);
+// 100rem extends the click zone into the wallpaper beside the book at any
+// desktop viewport size. overflow-x: clip on body prevents a scrollbar.
+const flipOverhangRem = $derived(spreadIndex === 0 ? 0 : 100);
 const entryDate = $derived(spreadState.kind === 'entry' ? spreadState.date : null);
 const entryDates = $derived(new Set(entryDatePreviews.map((e) => e.entry_date)));
 
@@ -390,17 +410,25 @@ async function saveSettings() {
     body: formData,
   });
   savingSettings = false;
-  if (!response.ok) {
-    let errorMessage = 'You have unsaved changes.';
-    try {
-      const payload = await response.json();
-      if (typeof payload?.data?.error === 'string') {
-        errorMessage = payload.data.error;
-      } else if (typeof payload?.error === 'string') {
-        errorMessage = payload.error;
+  // SvelteKit form actions always return HTTP 200; success/failure is in the JSON body.
+  let result: { type?: string; data?: string } | null = null;
+  try {
+    result = await response.json();
+  } catch {
+    /* non-JSON — treat as failure */
+  }
+  if (result?.type !== 'success') {
+    let errorMessage = 'Could not save settings. Please try again.';
+    if (result?.type === 'redirect') {
+      errorMessage = 'Session expired. Please reload the page.';
+    } else if (typeof result?.data === 'string') {
+      try {
+        // SvelteKit encodes fail() data as devalue: [{key: index}, ...values]
+        const parts: unknown[] = JSON.parse(result.data);
+        if (Array.isArray(parts) && typeof parts[1] === 'string') errorMessage = parts[1];
+      } catch {
+        // keep fallback message
       }
-    } catch {
-      // keep fallback
     }
     settingsWarning = true;
     settingsWarningText = errorMessage;
@@ -505,7 +533,16 @@ $effect(() => {
 			if (Math.abs(delta) > 50) { if (delta < 0 && canFlipNext) onFlipNext(); else if (delta > 0 && canFlipPrev) onFlipPrev(); }
 		}}
 	>
-		<div class="book-shell relative w-full max-w-5xl aspect-[3/2]" style="--page-font-size: {draftFontSizeCqw}cqw">
+		<div class="book-frame relative w-full max-w-5xl aspect-[331/194]" class:is-closed={spreadState.kind === 'cover' || spreadState.kind === 'backCover'}>
+		<div
+				class="book-shell"
+				class:is-closed={spreadState.kind === 'cover' || spreadState.kind === 'backCover'}
+				class:hide-left-stack={spreadState.kind === 'frontEndpaper'}
+				class:hide-right-stack={spreadState.kind === 'backEndpaper'}
+				style="--page-font-size: {draftFontSizeCqw}cqw; --left-stack: {leftStack}; --right-stack: {rightStack};"
+			>
+				<div class="shell-stack shell-stack-left" aria-hidden="true"></div>
+				<div class="shell-stack shell-stack-right" aria-hidden="true"></div>
 			<Spread
 				{onFlipPrev}
 				{onFlipNext}
@@ -516,15 +553,48 @@ $effect(() => {
 				{prevZonePct}
 				{nextZonePct}
 				overhangRem={flipOverhangRem}
-				hideLeftPage={spreadState.kind === 'cover' || spreadState.kind === 'backCover'}
+				hideLeftPage={spreadState.kind === 'cover'}
+				hideRightPage={spreadState.kind === 'backCover'}
+				noBackground={spreadState.kind === 'frontEndpaper' || spreadState.kind === 'backEndpaper' || spreadState.kind === 'cover' || spreadState.kind === 'backCover'}
 			>
 				{#snippet leftPage()}
 					{#if spreadState.kind === 'cover'}
-						<!-- blank — front cover is the only thing visible on this spread -->
+						<!-- blank — front cover fills only the right page -->
+					{:else if spreadState.kind === 'frontEndpaper'}
+						<div class="endpaper-wrap">
+							<div class="endpaper-fill endpaper-fill-left">
+								<div class="endpaper-plate-wrap">
+									<ExLibrisPage username={username} transparent={true} />
+								</div>
+							</div>
+						</div>
 					{:else if spreadState.kind === 'toc'}
-						<ExLibrisPage username={username} />
+						<div class="toc-ornament-page">
+							<svg class="toc-ornament-svg" viewBox="0 0 300 400" preserveAspectRatio="none" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
+								<rect x="18" y="18" width="264" height="364" fill="none" stroke="#5c3d1e" stroke-width="1.1"/>
+								<rect x="24" y="24" width="252" height="352" fill="none" stroke="#5c3d1e" stroke-width="0.5"/>
+								<path d="M18,38 L18,18 L38,18"   fill="none" stroke="#5c3d1e" stroke-width="0.8" stroke-linecap="round"/>
+								<path d="M282,38 L282,18 L262,18" fill="none" stroke="#5c3d1e" stroke-width="0.8" stroke-linecap="round"/>
+								<path d="M18,362 L18,382 L38,382" fill="none" stroke="#5c3d1e" stroke-width="0.8" stroke-linecap="round"/>
+								<path d="M282,362 L282,382 L262,382" fill="none" stroke="#5c3d1e" stroke-width="0.8" stroke-linecap="round"/>
+								<circle cx="150" cy="18" r="2"  fill="#5c3d1e"/>
+								<circle cx="150" cy="382" r="2" fill="#5c3d1e"/>
+								<circle cx="18"  cy="200" r="2" fill="#5c3d1e"/>
+								<circle cx="282" cy="200" r="2" fill="#5c3d1e"/>
+							</svg>
+						</div>
 					{:else if spreadState.kind === 'settings'}
 						<div class="h-full w-full bg-transparent"></div>
+					{:else if spreadState.kind === 'backEndpaper'}
+						<div class="endpaper-wrap">
+							<div class="endpaper-fill endpaper-fill-left">
+								<img src="/girls.png" alt="" aria-hidden="true" class="about-girls-left" />
+							</div>
+						</div>
+					{:else if spreadState.kind === 'backCover'}
+						<div role="presentation" class="h-full w-full">
+							<CoverPage config={activeCover} {username} {diaryTitle} backCover={true} />
+						</div>
 					{:else if spreadState.kind === 'entry'}
 						{@const leftStart = entryPageSpread === 0 ? 0 : (splitPoints[entryPageSpread * 2 - 1] ?? 0)}
 						{@const leftEnd = splitPoints[entryPageSpread * 2]}
@@ -535,12 +605,6 @@ $effect(() => {
 								class="absolute top-5 left-8 z-10 page-top-link text-xs text-stone-400 tracking-wide hover:text-ornament-gold transition-colors"
 								aria-label="Open calendar"
 							>{($page.data as any).displayDate ?? ''}</button>
-							<button
-								type="button"
-								onclick={() => { void navigateTo(todayIso()); }}
-								class="absolute top-5 right-8 z-10 page-top-link text-xs text-stone-400 tracking-wide hover:text-ornament-gold transition-colors"
-								aria-label="Turn to Today"
-							>Turn to today...</button>
 							{#if activeEditor !== 'left'}
 								<div
 									class="absolute inset-0 w-full overflow-hidden px-8 pt-12 pb-8 text-ink-900 leading-relaxed pointer-events-none whitespace-pre-wrap break-words"
@@ -570,15 +634,7 @@ $effect(() => {
 					{/if}
 				{/snippet}
 				{#snippet rightPage()}
-					<!-- edelweiss settings shortcut — entry and toc only -->
-					{#if spreadState.kind === 'entry' || spreadState.kind === 'toc'}
-						<button
-							type="button"
-							onclick={openSettings}
-								class="absolute top-4 right-5 z-20 opacity-70"
-							aria-label="Settings"
-						><img src="/edelweiss.svg" style="width: 1.6rem; height: auto" alt="" /></button>
-					{/if}
+					<!-- settings button moved to spell panel ribbon -->
 
 					{#if spreadState.kind === 'settings'}
 						<div class="absolute inset-0 px-8 pt-10 pb-8 overflow-hidden font-serif">
@@ -634,12 +690,6 @@ $effect(() => {
 							</div>
 						</div>
 					{:else if spreadState.kind === 'entry'}
-						<!-- Recent entries link — center top of right page, sits within the pt-12 top margin -->
-						<button
-							type="button"
-							onclick={() => { spreadState = { kind: 'toc' }; }}
-							class="absolute top-5 left-1/2 -translate-x-1/2 z-10 page-top-link text-xs text-stone-400 tracking-wide hover:text-ornament-gold transition-colors"
-						>Recent entries</button>
 						{@const rightStart = splitPoints[entryPageSpread * 2]}
 						{@const rightEnd = splitPoints[entryPageSpread * 2 + 1]}
 						{#if rightStart !== undefined}
@@ -668,35 +718,39 @@ $effect(() => {
 								<div class="absolute bottom-2 right-3 text-xs text-stone-400 italic pointer-events-none">→ continued</div>
 							{/if}
 						{/if}
+					{:else if spreadState.kind === 'frontEndpaper'}
+						<div class="endpaper-wrap"><div class="endpaper-fill endpaper-fill-right"></div></div>
 					{:else if spreadState.kind === 'toc'}
 						<TocPage entries={entryDatePreviews} onNavigate={navigateTo} />
 					{:else if spreadState.kind === 'cover'}
 						<div role="presentation" class="h-full w-full cursor-pointer" onclick={onFlipNext}>
-							<CoverPage config={activeCover} {username} {diaryTitle} showSettings={true} onOpenSettings={openSettings} />
+							<CoverPage config={activeCover} {username} {diaryTitle} showSettings={true} buttonLabel="Turn to today" onOpenSettings={() => { void navigateTo(todayIso()); }} />
 						</div>
-					{:else if spreadState.kind === 'about'}
-						<div class="absolute inset-0 px-8 pt-10 pb-8 overflow-hidden font-serif flex flex-col">
-							<img src="/girls.png" alt="" aria-hidden="true" class="about-girls" />
-							<div class="flex-1 flex flex-col justify-center gap-6 text-ink-900">
-								<h1 class="about-title">Edelmore</h1>
-								<p class="about-subtitle">A private diary shaped like a book.</p>
-								<p class="about-body">Made for Iona and Isla, and now for anyone else who wants a quiet place that belongs to them — by their dad, <a href="https://sageframe.net" target="_blank" rel="noopener noreferrer" class="about-link">Andrew Marcus</a>.</p>
-								<p class="about-body">The book opens to today's page. It saves itself. It listens when your hands are tired. Nobody reads it but the person writing in it.</p>
-								<p class="about-body">Built using the principles of Universal Design for Learning, so that keeping a diary doesn't depend on what a pen demands of a hand.</p>
-								<p class="about-body">Runs on a small computer at home.</p>
-							</div>
-							<div class="mt-6">
-								<button type="button" onclick={closeAbout} class="settings-back-link">← Back</button>
+					{:else if spreadState.kind === 'backEndpaper'}
+						<div class="endpaper-wrap">
+							<div class="endpaper-fill endpaper-fill-right">
+							<div class="back-label-sticker">
+								<img src="/label.png" alt="" aria-hidden="true" class="back-label-img" />
+								<div class="back-label-text">
+									<p class="ep-about-section">About</p>
+									<p class="ep-about-title">Edelmore</p>
+									<p class="ep-about-subtitle">(Edelweiss + Evermore)</p>
+									<p class="ep-about-body">A private diary shaped like a book.</p>
+									<p class="ep-about-body">Made for Iona, Ada, &amp; Isla — and anyone else who wants a quiet place that belongs to them — by their dad, Andrew. atmarcus.net</p>
+									<p class="ep-about-body">Inspired by <em>Little House on the Prairie</em>, <em>All-of-a-Kind Family</em>, and <em>the diary of Anne Frank</em>.</p>
+									<p class="ep-about-body">Saves itself. Tells your story. Listens when your hands are tired.</p>
+									<p class="ep-about-body">Built with Universal Design for Learning. udlguidelines.cast.org</p>
+									<p class="ep-about-body">Runs at home.</p>
+								</div>
 							</div>
 						</div>
-					{:else if spreadState.kind === 'backCover'}
-						<div role="presentation" class="h-full w-full">
-							<CoverPage config={activeCover} {username} {diaryTitle} backCover={true} />
 						</div>
 					{/if}
 				{/snippet}
 			</Spread>
-			{#if spreadState.kind === 'entry'}
+				<div class="shell-seam" aria-hidden="true"></div>
+		</div><!-- /book-shell -->
+		{#if spreadState.kind !== 'cover' && spreadState.kind !== 'backCover'}
 				<div class="spell-anchor">
 					<div class={`spell-panel ${spellsOpen ? 'is-open' : 'is-closed'}`} role="note" aria-label="Magic writing spells">
 						<button
@@ -729,12 +783,22 @@ $effect(() => {
 									<li><span class="spell-code">_word_</span> <u>extra important</u></li>
 									<li><span class="spell-code">~word~</span> <s>crossed out</s></li>
 							</ul>
-							<button type="button" class="spell-about" onclick={openAbout} aria-label="About Edelmore">About</button>
-						</div>
+							<div class="spell-buttons">
+								<button type="button" onclick={() => { void navigateTo(todayIso()); }} class="spell-today" aria-label="Turn to today">
+									<img src="/now.svg" style="width: 100%; height: 100%; object-fit: contain" alt="" />
+								</button>
+								<button type="button" onclick={() => { spreadState = { kind: 'toc' }; }} class="spell-entries" aria-label="Recent entries">
+									<img src="/entries.svg" style="width: 100%; height: 100%; object-fit: contain" alt="" />
+								</button>
+								<button type="button" onclick={openSettings} class="spell-settings" aria-label="Settings">
+									<img src="/edelweiss.svg" style="width: 100%; height: 100%; object-fit: contain" alt="" />
+								</button>
+							</div>
+							</div>
 					</div>
 				</div>
-			{/if}
-		</div>
+		{/if}
+		</div><!-- /book-frame -->
 	</div>
 
 	<!-- Mobile: single page with nav buttons -->
@@ -900,74 +964,166 @@ $effect(() => {
 			0 -1px 0 rgba(0, 0, 0, 0.25);
 	}
 
-	/* ── About page ──────────────────────────────────────────────────────── */
+	/* ── TOC left page decorative border ────────────────────────────────── */
 
-	.about-title {
-		font-family: 'Rouge Script', cursive;
-		font-size: 3rem;
-		color: #4a3728;
-		font-weight: 400;
-		line-height: 1.05;
-		text-align: left;
+	.toc-ornament-page {
+		position: relative;
+		width: 100%;
+		height: 100%;
 	}
 
-	.about-subtitle {
-		font-family: 'EB Garamond', Georgia, serif;
-		font-size: 0.98rem;
-		font-style: italic;
-		color: #6b5340;
-		margin: 0;
-		text-align: left;
-	}
-
-	.about-body {
-		font-family: 'EB Garamond', Georgia, serif;
-		font-size: 0.92rem;
-		color: #4a3728;
-		line-height: 1.55;
-		margin: 0;
-		text-align: left;
-	}
-
-	.about-link {
-		color: #8b6914;
-		text-decoration: underline;
-		text-underline-offset: 2px;
-	}
-
-	.about-link:hover {
-		color: #5c4510;
-	}
-
-	.about-girls {
+	.toc-ornament-svg {
 		position: absolute;
-		left: 4%;
-		top: 22%;
-		width: 25%;
+		inset: 0;
+		width: 100%;
+		height: 100%;
+		pointer-events: none;
+	}
+
+	/* ── Endpaper pages (front + back) ──────────────────────────────────── */
+
+	.endpaper-wrap {
+		position: absolute;
+		inset: 0;
+		border-radius: 5px;
+		overflow: hidden;
+	}
+
+	.endpaper-fill {
+		position: absolute;
+		inset: 0;
+		background: url('/marble.png') center / cover;
+		/* Pressed-flat feel — deeper corner vignette */
+		box-shadow: inset 0 0 50px rgba(0, 0, 0, 0.10);
+	}
+
+	/* Gutter shadow: glued edge where the paper meets the spine */
+	.endpaper-fill-left {
+		box-shadow:
+			inset -10px 0 24px rgba(0, 0, 0, 0.18),
+			inset 0 0 40px rgba(0, 0, 0, 0.08);
+		clip-path: polygon(
+			0% 0%, 100% 0%, 100% 100%, 0% 100%,
+			3px 82%, 1px 60%, 4px 38%, 0px 16%, 0% 0%
+		);
+	}
+
+	.endpaper-fill-right {
+		box-shadow:
+			inset 10px 0 24px rgba(0, 0, 0, 0.18),
+			inset 0 0 40px rgba(0, 0, 0, 0.08);
+		clip-path: polygon(
+			0% 0%,
+			calc(100% - 2px) 0%, 100% 18%,
+			calc(100% - 3px) 42%, 100% 64%,
+			calc(100% - 1px) 86%, 100% 100%,
+			0% 100%
+		);
+	}
+
+	/* Bookplate centered on the left front endpaper */
+	.endpaper-plate-wrap {
+		position: absolute;
+		inset: 0;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		pointer-events: none;
+	}
+
+	.endpaper-plate-wrap > :global(*) {
+		width: 62%;
+		height: auto;
+		position: relative;
+		box-shadow: 0 2px 10px rgba(0, 0, 0, 0.22), 0 1px 3px rgba(0, 0, 0, 0.12);
+	}
+
+	/* Girls photo on back endpaper left page */
+	.about-girls-left {
+		position: absolute;
+		bottom: 16%;
+		right: 14%;
+		width: 54%;
 		height: auto;
 		object-fit: contain;
 		pointer-events: none;
 	}
 
-	/* ── About ribbon button ─────────────────────────────────────────────── */
-
-	.spell-about {
-		font-family: 'Rouge Script', cursive;
-		font-size: 1.95cqi;
-		color: #8b6914;
-		background: transparent;
-		border: none;
-		padding: 0 0.2cqi;
-		cursor: pointer;
-		white-space: nowrap;
-		margin-left: auto;
-		flex-shrink: 0;
-		line-height: 1;
-		text-align: right;
+	/* Back endpaper: label centered at 40% page width; text scales with sticker */
+	.back-label-sticker {
+		position: absolute;
+		top: 50%;
+		left: 50%;
+		transform: translate(-50%, -50%);
+		width: 65%;
+		container-type: inline-size;
 	}
 
-	.spell-about:hover {
-		color: #5c4510;
+	.back-label-img {
+		width: 100%;
+		height: auto;
+		display: block;
+		pointer-events: none;
+	}
+
+	.back-label-text {
+		position: absolute;
+		inset: 12% 8% 8% 8%;
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		justify-content: center;
+		text-align: center;
+		gap: 0.8cqi;
+		overflow: hidden;
+	}
+
+	.ep-about-section {
+		font-family: 'EB Garamond', Georgia, serif;
+		font-size: 5cqi;
+		color: #6a4a28;
+		letter-spacing: 0.12em;
+		text-transform: uppercase;
+		margin: 0 0 0.5cqi;
+		flex-shrink: 0;
+	}
+
+	.ep-about-title {
+		font-family: 'Rouge Script', cursive;
+		font-size: 14cqi;
+		color: #3a2510;
+		font-weight: 400;
+		line-height: 1.0;
+		margin: 0;
+		flex-shrink: 0;
+	}
+
+	.ep-about-subtitle {
+		font-family: 'EB Garamond', Georgia, serif;
+		font-size: 4.5cqi;
+		color: #6a4a28;
+		font-style: italic;
+		margin: 0 0 1cqi;
+		flex-shrink: 0;
+	}
+
+	.ep-about-body {
+		font-family: 'EB Garamond', Georgia, serif;
+		font-size: 4.5cqi;
+		color: #4a3520;
+		line-height: 1.4;
+		margin: 0;
+		flex-shrink: 0;
+	}
+
+	/* ── Shell stack suppression for endpaper states ────────────────────── */
+
+	.book-shell.hide-left-stack .shell-stack-left {
+		display: none;
+	}
+
+	.book-shell.hide-right-stack .shell-stack-right {
+		display: none;
 	}
 
 	.settings-warning-text {
@@ -1004,9 +1160,10 @@ $effect(() => {
 	.spell-anchor {
 		position: absolute;
 		top: calc(100% + 0.6rem);
-		left: 0;
+		left: 50%;
+		transform: translateX(-50%);
 		z-index: 30;
-		width: 100%;
+		width: 93%;
 	}
 
 	.spell-panel {
@@ -1024,7 +1181,7 @@ $effect(() => {
 		max-width: none;
 		height: var(--spell-collapsed-size);
 		width: var(--spell-collapsed-size);
-		overflow: hidden;
+		overflow: visible;
 		transform-origin: left center;
 		transition: width 1s ease, padding 1s ease;
 	}
@@ -1041,7 +1198,7 @@ $effect(() => {
 		flex: 1 1 auto;
 		gap: 1cqi;
 		min-width: 0;
-		overflow: hidden;
+		overflow: visible;
 		opacity: 0;
 		transform: translateX(-0.5rem);
 		pointer-events: none;
@@ -1070,32 +1227,212 @@ $effect(() => {
 		display: flex;
 		flex-direction: row;
 		flex-wrap: nowrap;
-		gap: 1.2cqi;
-		line-height: 2.05cqi;
-		font-size: 1.67cqi;
+		gap: 1.0cqi;
+		line-height: 1.8cqi;
+		font-size: 1.42cqi;
 		white-space: nowrap;
 	}
 
 	.spell-list li {
 		display: flex;
 		align-items: center;
-		gap: 0.6cqi;
+		gap: 0.5cqi;
 	}
 
 	.spell-code {
 		font-family: 'Courier New', monospace;
-		font-size: 1.55cqi;
+		font-size: 1.3cqi;
 		color: #8b6914;
 		background: rgba(139, 105, 20, 0.08);
 		padding: 0 0.4cqi;
 		border-radius: 2px;
 	}
 
+	.spell-buttons {
+		margin-left: auto;
+		flex-shrink: 0;
+		display: flex;
+		align-items: center;
+		gap: 0.4cqi;
+	}
+
+	.spell-settings,
+	.spell-today,
+	.spell-entries {
+		position: relative;
+		background: transparent;
+		border: none;
+		cursor: pointer;
+		padding: 0.22cqi;
+		opacity: 0.65;
+		flex-shrink: 0;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		width: 3.6cqi;
+		height: 3.6cqi;
+	}
+
+	.spell-settings:hover,
+	.spell-today:hover,
+	.spell-entries:hover {
+		opacity: 1;
+	}
+
+	/* ── Ribbon tooltips ─────────────────────────────────────────────────── */
+	.spell-panel.is-closed .spell-flower::after { content: "open"; }
+	.spell-panel.is-open  .spell-flower::after  { content: "close"; }
+	.spell-today::after    { content: "today"; }
+	.spell-entries::after  { content: "recent entries"; }
+	.spell-settings::after { content: "settings"; }
+
+	.spell-flower::after,
+	.spell-today::after,
+	.spell-entries::after,
+	.spell-settings::after {
+		position: absolute;
+		top: calc(100% + 1.2cqi);
+		left: 50%;
+		transform: translateX(-50%) scale(0.88);
+		font-family: 'Rouge Script', cursive;
+		font-size: 1.9cqi;
+		color: #4a3728;
+		background: rgba(254, 252, 247, 0.96);
+		border: 1px solid #dfc9a4;
+		padding: 0.12cqi 0.55cqi;
+		border-radius: 0.5cqi;
+		white-space: nowrap;
+		pointer-events: none;
+		opacity: 0;
+		transition: opacity 0.18s ease, transform 0.18s ease;
+		z-index: 40;
+	}
+
+	.spell-flower:hover::after,
+	.spell-flower:focus-visible::after,
+	.spell-today:hover::after,
+	.spell-today:focus-visible::after,
+	.spell-entries:hover::after,
+	.spell-entries:focus-visible::after,
+	.spell-settings:hover::after,
+	.spell-settings:focus-visible::after {
+		opacity: 1;
+		transform: translateX(-50%) scale(1);
+	}
+
+	.book-frame {
+		background: url('/edge.png') center / 100% 100% no-repeat;
+		/* spell-anchor uses cqi units; book-frame is its container since AT-01
+		   moved spell-anchor out of book-shell. */
+		container-type: inline-size;
+		filter:
+			drop-shadow(0 20px 60px rgba(0, 0, 0, 0.45))
+			drop-shadow(0 6px 18px  rgba(0, 0, 0, 0.30))
+			drop-shadow(0 2px 4px   rgba(0, 0, 0, 0.20));
+	}
+
+	.book-frame.is-closed {
+		background: none;
+	}
+
 	.book-shell {
+		position: absolute;
+		width: 93%;
+		height: 93%;
+		top: 50%;
+		left: 50%;
+		transform: translate(-50%, -50%);
 		container-type: inline-size;
 	}
 
+	.book-shell.is-closed {
+		width: 100%;
+		height: 100%;
+		top: 0;
+		left: 0;
+		transform: none;
+	}
+
+
+	/* ── Shell stacks (procedural, no DOM per leaf) ──────────────────────── */
+
+	.shell-stack {
+		position: absolute;
+		top: 0;
+		bottom: 0;
+		pointer-events: none;
+		z-index: 0;
+	}
+
+	.shell-stack-left {
+		left: calc(-1 * var(--left-stack) * 3cqw);
+		width: calc(var(--left-stack) * 3cqw);
+		border-radius: 3px 0 0 3px;
+		background:
+			linear-gradient(to right, rgba(0, 0, 0, 0) 40%, rgba(0, 0, 0, 0.10) 100%),
+			repeating-linear-gradient(
+				to right,
+				#f0e3c6 0,             #f0e3c6 2px,
+				rgba(0,0,0,0.28) 2px,  rgba(0,0,0,0.28) 2.5px,
+				#ece0bc 2.5px,         #ece0bc 4.5px,
+				rgba(0,0,0,0.22) 4.5px, rgba(0,0,0,0.22) 5px,
+				#f3e7cb 5px,           #f3e7cb 7px,
+				rgba(0,0,0,0.25) 7px,  rgba(0,0,0,0.25) 7.5px,
+				#e8d9b2 7.5px,         #e8d9b2 9.5px,
+				rgba(0,0,0,0.22) 9.5px, rgba(0,0,0,0.22) 10px
+			);
+		mask-image: linear-gradient(to right, black 60%, rgba(0, 0, 0, 0.75) 100%);
+	}
+
+	.shell-stack-right {
+		right: calc(-1 * var(--right-stack) * 3cqw);
+		width: calc(var(--right-stack) * 3cqw);
+		border-radius: 0 3px 3px 0;
+		background:
+			linear-gradient(to left, rgba(0, 0, 0, 0) 40%, rgba(0, 0, 0, 0.10) 100%),
+			repeating-linear-gradient(
+				to left,
+				#f0e3c6 0,             #f0e3c6 2px,
+				rgba(0,0,0,0.28) 2px,  rgba(0,0,0,0.28) 2.5px,
+				#ece0bc 2.5px,         #ece0bc 4.5px,
+				rgba(0,0,0,0.22) 4.5px, rgba(0,0,0,0.22) 5px,
+				#f3e7cb 5px,           #f3e7cb 7px,
+				rgba(0,0,0,0.25) 7px,  rgba(0,0,0,0.25) 7.5px,
+				#e8d9b2 7.5px,         #e8d9b2 9.5px,
+				rgba(0,0,0,0.22) 9.5px, rgba(0,0,0,0.22) 10px
+			);
+		mask-image: linear-gradient(to left, black 60%, rgba(0, 0, 0, 0.75) 100%);
+	}
+
+	/* ── Gutter seam (persistent, above spread, below modals) ───────────── */
+
+	.shell-seam {
+		position: absolute;
+		top: 0;
+		bottom: 0;
+		left: 50%;
+		width: 6px;
+		transform: translateX(-50%);
+		pointer-events: none;
+		z-index: 5;
+		background:
+			linear-gradient(
+				to right,
+				rgba(0, 0, 0, 0.18) 0%,
+				rgba(0, 0, 0, 0.05) 30%,
+				rgba(0, 0, 0, 0.08) 50%,
+				rgba(0, 0, 0, 0.05) 70%,
+				rgba(0, 0, 0, 0.18) 100%
+			);
+	}
+
+	.book-shell.is-closed .shell-seam,
+	.book-shell.is-closed .shell-stack {
+		display: none;
+	}
+
 	.spell-flower {
+		position: relative;
 		background: transparent;
 		border: none;
 		border-radius: 0;
