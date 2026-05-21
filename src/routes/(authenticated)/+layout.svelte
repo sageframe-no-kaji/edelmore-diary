@@ -1,5 +1,5 @@
 <script lang="ts">
-import { goto, invalidateAll, onNavigate } from '$app/navigation';
+import { goto, invalidateAll } from '$app/navigation';
 import { page } from '$app/stores';
 import CalendarModal from '$lib/components/CalendarModal.svelte';
 import CoverPage from '$lib/components/CoverPage.svelte';
@@ -11,7 +11,9 @@ import { todayIso } from '$lib/dates.js';
 import type { EntryDatePreview } from '$lib/db.js';
 import { findSplitIndex, snapToWordBreak } from '$lib/overflow.js';
 import type { Snippet } from 'svelte';
-import { flushSync, onMount, tick, untrack } from 'svelte';
+import { onMount, tick, untrack } from 'svelte';
+import { cubicOut } from 'svelte/easing';
+import { tweened } from 'svelte/motion';
 
 type SpreadState =
   | { kind: 'cover' }
@@ -24,44 +26,104 @@ type SpreadState =
 
 const { children }: { children: Snippet } = $props();
 
-// ── View Transitions ─────────────────────────────────────────────────────────
+// ── Page-flip primitive (two-faced 3D rotation around the spine) ───────────
+//
+// Forward: only the right page rotates, pivoting at its left edge (= spine).
+// Backward: only the left page rotates, pivoting at its right edge (= spine).
+//
+// The rotating wrapper has TWO absolutely-positioned faces:
+//   - front: clone of the OLD page (snapshot taken before mutation)
+//   - back: clone of the NEW page (snapshot taken after mutation),
+//           pre-rotated 180° so its content reads correctly when revealed.
+// Both faces use `backface-visibility: hidden` so each is visible only on
+// the matching half of the rotation arc.
+//
+// The live (now-new-content) page underneath is hidden via `visibility`
+// during the rotation so it doesn't bleed around the rotating wrapper.
+const flipDurationMs = 700;
+const flipAngle = tweened(0, { duration: flipDurationMs, easing: cubicOut });
+let isFlipping = $state(false);
+// biome-ignore lint/style/useConst: bind:this requires let — Biome doesn't see template bindings
+let bookShellEl: HTMLDivElement | null = $state(null);
 
-let flipDirection: 'forward' | 'backward' = $state('forward');
-
-$effect(() => {
-  if (typeof document !== 'undefined') {
-    document.documentElement.dataset.flipDirection = flipDirection;
-  }
-});
-
-function withFlip(direction: 'forward' | 'backward', mutate: () => void) {
-  flipDirection = direction;
-  if (typeof document === 'undefined') {
-    mutate();
-    return;
-  }
-  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-    mutate();
-    return;
-  }
-  if (!document.startViewTransition) {
-    mutate();
-    return;
-  }
-  document.startViewTransition(() => flushSync(mutate));
+function getLivePage(direction: 'forward' | 'backward'): HTMLElement | null {
+  const selector = direction === 'forward' ? '.page-right' : '.page-left';
+  return bookShellEl?.querySelector<HTMLElement>(`.spread ${selector}`) ?? null;
 }
 
-onNavigate((navigation) => {
-  if (typeof document === 'undefined') return;
-  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-  if (!document.startViewTransition) return;
-  return new Promise((resolve) => {
-    document.startViewTransition(async () => {
-      resolve();
-      await navigation.complete;
-    });
+function makeFace(source: HTMLElement, isBack: boolean): HTMLElement {
+  const clone = source.cloneNode(true) as HTMLElement;
+  clone.style.position = 'absolute';
+  clone.style.top = '0';
+  clone.style.left = '0';
+  clone.style.width = '100%';
+  clone.style.height = '100%';
+  clone.style.margin = '0';
+  clone.style.backfaceVisibility = 'hidden';
+  if (isBack) clone.style.transform = 'rotateY(180deg)';
+  return clone;
+}
+
+async function flip(direction: 'forward' | 'backward', mutate: () => void | Promise<void>) {
+  if (isFlipping) return;
+  if (!bookShellEl) {
+    await mutate();
+    return;
+  }
+  if (
+    typeof window !== 'undefined' &&
+    window.matchMedia('(prefers-reduced-motion: reduce)').matches
+  ) {
+    await mutate();
+    return;
+  }
+  const oldLive = getLivePage(direction);
+  if (!oldLive) {
+    await mutate();
+    return;
+  }
+
+  isFlipping = true;
+
+  // Snapshot the OLD page BEFORE mutation.
+  const frontFace = makeFace(oldLive, false);
+
+  // Run the mutation (sync state change, or async routed navigation).
+  await Promise.resolve(mutate());
+  // Wait for Svelte to flush DOM updates so we can snapshot the new content.
+  await tick();
+
+  // Snapshot the NEW page (now in the live DOM).
+  const newLive = getLivePage(direction);
+  const backFace = newLive ? makeFace(newLive, true) : null;
+
+  // Hide the live page so it doesn't show alongside the rotating wrapper.
+  if (newLive) newLive.style.visibility = 'hidden';
+
+  // Build the rotating wrapper and insert it into the book shell.
+  const wrapper = document.createElement('div');
+  wrapper.classList.add(
+    'flip-snapshot',
+    direction === 'forward' ? 'flip-forward' : 'flip-backward'
+  );
+  wrapper.appendChild(frontFace);
+  if (backFace) wrapper.appendChild(backFace);
+  bookShellEl.appendChild(wrapper);
+
+  // Tween the rotation.
+  flipAngle.set(0, { duration: 0 });
+  const unsubscribe = flipAngle.subscribe((angle) => {
+    wrapper.style.transform = `rotateY(${angle}deg)`;
   });
-});
+  const target = direction === 'forward' ? -180 : 180;
+  await flipAngle.set(target);
+
+  // Cleanup.
+  unsubscribe();
+  wrapper.remove();
+  if (newLive) newLive.style.visibility = '';
+  isFlipping = false;
+}
 
 let spreadState: SpreadState = $state(
   untrack(() =>
@@ -161,29 +223,28 @@ async function navigateTo(date: string) {
 
 function onFlipNext() {
   if (spreadState.kind === 'cover') {
-    withFlip('forward', () => {
+    flip('forward', () => {
       spreadState = { kind: 'frontEndpaper' };
     });
   } else if (spreadState.kind === 'frontEndpaper') {
-    withFlip('forward', () => {
+    flip('forward', () => {
       spreadState = { kind: 'toc' };
     });
   } else if (spreadState.kind === 'toc') {
     if (entryDatePreviews.length > 0) {
-      flipDirection = 'forward';
-      navigateTo(entryDatePreviews[0].entry_date);
+      flip('forward', () => navigateTo(entryDatePreviews[0].entry_date));
     }
   } else if (spreadState.kind === 'entry') {
     if (entryPageSpread < entrySpreadCount - 1) {
-      withFlip('forward', () => {
+      flip('forward', () => {
         entryPageSpread += 1;
       });
     } else if (nextDate) {
-      flipDirection = 'forward';
-      navigateTo(nextDate);
+      const target = nextDate;
+      flip('forward', () => navigateTo(target));
     } else {
       // Last entry — flip into the back of the book.
-      withFlip('forward', () => {
+      flip('forward', () => {
         prevSpreadState = spreadState;
         spreadState = { kind: 'settings' };
         settingsWarning = false;
@@ -198,11 +259,11 @@ function onFlipNext() {
       });
     }
   } else if (spreadState.kind === 'settings') {
-    withFlip('forward', () => {
+    flip('forward', () => {
       spreadState = { kind: 'backEndpaper' };
     });
   } else if (spreadState.kind === 'backEndpaper') {
-    withFlip('forward', () => {
+    flip('forward', () => {
       spreadState = { kind: 'backCover' };
     });
   }
@@ -210,13 +271,13 @@ function onFlipNext() {
 
 function onFlipPrev() {
   if (spreadState.kind === 'backCover') {
-    withFlip('backward', () => {
+    flip('backward', () => {
       spreadState = { kind: 'backEndpaper' };
     });
     return;
   }
   if (spreadState.kind === 'backEndpaper') {
-    withFlip('backward', () => {
+    flip('backward', () => {
       spreadState = { kind: 'settings' };
     });
     return;
@@ -227,30 +288,30 @@ function onFlipPrev() {
   }
   if (spreadState.kind === 'entry') {
     if (entryPageSpread > 0) {
-      withFlip('backward', () => {
+      flip('backward', () => {
         entryPageSpread -= 1;
       });
     } else if (prevDate) {
-      flipDirection = 'backward';
-      navigateTo(prevDate);
+      const target = prevDate;
+      flip('backward', () => navigateTo(target));
     } else {
-      withFlip('backward', () => {
+      flip('backward', () => {
         spreadState = { kind: 'toc' };
       });
     }
   } else if (spreadState.kind === 'toc') {
-    withFlip('backward', () => {
+    flip('backward', () => {
       spreadState = { kind: 'frontEndpaper' };
     });
   } else if (spreadState.kind === 'frontEndpaper') {
-    withFlip('backward', () => {
+    flip('backward', () => {
       spreadState = { kind: 'cover' };
     });
   }
 }
 
 function openSettings() {
-  withFlip('forward', () => {
+  flip('forward', () => {
     prevSpreadState = spreadState;
     spreadState = { kind: 'settings' };
     settingsWarning = false;
@@ -272,7 +333,7 @@ function closeSettings() {
     settingsWarningText = 'You have unsaved changes.';
     return;
   }
-  withFlip('backward', () => {
+  flip('backward', () => {
     spreadState = prevSpreadState ?? { kind: 'cover' };
     prevSpreadState = null;
     settingsWarning = false;
@@ -512,7 +573,7 @@ async function saveSettings() {
   draftConfirm = '';
   settingsWarning = false;
   settingsBackArmed = false;
-  withFlip('backward', () => {
+  flip('backward', () => {
     spreadState = prevSpreadState ?? { kind: 'cover' };
     prevSpreadState = null;
   });
@@ -604,8 +665,9 @@ $effect(() => {
 			if (Math.abs(delta) > 50) { if (delta < 0 && canFlipNext) onFlipNext(); else if (delta > 0 && canFlipPrev) onFlipPrev(); }
 		}}
 	>
-		<div class="book-frame relative w-full max-w-5xl aspect-[331/194]" class:is-closed={spreadState.kind === 'cover' || spreadState.kind === 'backCover'}>
+		<div class="book-frame flip-stage relative w-full max-w-5xl aspect-[331/194]" class:is-closed={spreadState.kind === 'cover' || spreadState.kind === 'backCover'}>
 		<div
+				bind:this={bookShellEl}
 				class="book-shell"
 				class:is-closed={spreadState.kind === 'cover' || spreadState.kind === 'backCover'}
 				class:hide-left-stack={spreadState.kind === 'frontEndpaper'}
@@ -795,7 +857,7 @@ $effect(() => {
 						<TocPage entries={entryDatePreviews} onNavigate={navigateTo} />
 					{:else if spreadState.kind === 'cover'}
 						<div role="presentation" class="h-full w-full cursor-pointer" onclick={onFlipNext}>
-							<CoverPage config={activeCover} {username} {diaryTitle} showSettings={true} buttonLabel="Turn to today" onOpenSettings={() => { flipDirection = 'forward'; void navigateTo(todayIso()); }} />
+							<CoverPage config={activeCover} {username} {diaryTitle} showSettings={true} buttonLabel="Turn to today" onOpenSettings={() => { void flip('forward', () => navigateTo(todayIso())); }} />
 						</div>
 					{:else if spreadState.kind === 'backEndpaper'}
 						<div class="endpaper-wrap">
@@ -855,10 +917,10 @@ $effect(() => {
 									<li><span class="spell-code">~word~</span> <s>crossed out</s></li>
 							</ul>
 							<div class="spell-buttons">
-								<button type="button" onclick={() => { flipDirection = 'forward'; void navigateTo(todayIso()); }} class="spell-today" aria-label="Turn to today">
+								<button type="button" onclick={() => { void flip('forward', () => navigateTo(todayIso())); }} class="spell-today" aria-label="Turn to today">
 									<img src="/now.svg" style="width: 100%; height: 100%; object-fit: contain" alt="" />
 								</button>
-								<button type="button" onclick={() => { withFlip('backward', () => { spreadState = { kind: 'toc' }; }); }} class="spell-entries" aria-label="Recent entries">
+								<button type="button" onclick={() => { void flip('backward', () => { spreadState = { kind: 'toc' }; }); }} class="spell-entries" aria-label="Recent entries">
 									<img src="/entries.svg" style="width: 100%; height: 100%; object-fit: contain" alt="" />
 								</button>
 								<button type="button" onclick={openSettings} class="spell-settings" aria-label="Settings">

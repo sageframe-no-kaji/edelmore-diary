@@ -97,7 +97,6 @@ const {
 		width: 100%;
 		height: 100%;
 		display: flex;
-		view-transition-name: page-spread;
 		/* Paper color fills the ragged-edge gaps created by clip-path on each page */
 		background: #e2d8ac;
 		box-shadow:
