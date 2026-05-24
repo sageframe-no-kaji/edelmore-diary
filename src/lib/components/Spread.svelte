@@ -97,26 +97,17 @@ const {
 		width: 100%;
 		height: 100%;
 		display: flex;
-		/* Paper color fills the ragged-edge gaps created by clip-path on each page */
-		background-color: #e2d8ac;
+		/* Paper color fills the ragged-edge gaps created by clip-path on each
+		   page. Matched to .page's background so when both lives are hidden
+		   during a flip there's no color shift visible through. */
+		background-color: #e8ddb5;
+		/* Close inner depth shadow. Outer depth shadow lives on
+		   .book-shell-inner (in layout) — it traces all the static content
+		   (stacks + spread + seam) without tracking the rotating wrapper. */
 		box-shadow:
 			0 8px 32px rgba(0, 0, 0, 0.38),
 			0 3px 8px  rgba(0, 0, 0, 0.22),
 			0 1px 2px  rgba(0, 0, 0, 0.14);
-		/* Outer depth shadow — was on .book-shell, but drop-shadow filter
-		   traces visible content, so anything appended into book-shell during
-		   a flip (the rotating wrapper) would be tracked too. .spread is the
-		   container of the static page content only; the rotating wrapper is
-		   appended at the book-shell level as a sibling of .spread-container,
-		   so this filter stays clean during flips. */
-		filter:
-			drop-shadow(0 20px 60px rgba(0, 0, 0, 0.45))
-			drop-shadow(0 6px 18px  rgba(0, 0, 0, 0.30))
-			drop-shadow(0 2px 4px   rgba(0, 0, 0, 0.20));
-		/* Smooth the open ↔ closed shadow fade. Note: do NOT transition
-		   background-color — when a page is hidden (cover/backCover), the
-		   paper color would be briefly visible through the hidden half. */
-		transition: box-shadow 700ms cubic-bezier(0.4, 0, 0.2, 1);
 	}
 
 	/* Cover and back-cover: kill all shadows — transparent left page bleeds the shadow */
