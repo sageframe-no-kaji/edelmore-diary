@@ -425,6 +425,16 @@ function onFlipPrev() {
   }
 }
 
+function speakEntry() {
+  if (typeof window === 'undefined' || !window.speechSynthesis) return;
+  const text = content?.trim();
+  if (!text) return;
+  const synth = window.speechSynthesis;
+  synth.cancel();
+  const u = new SpeechSynthesisUtterance(text);
+  synth.speak(u);
+}
+
 function openSettings() {
   flip('forward', () => {
     prevSpreadState = spreadState;
@@ -1049,6 +1059,9 @@ $effect(() => {
 								<div class="spell-quill">
 									<MicQuill oninsert={handleTranscriptionInsert} />
 								</div>
+								<button type="button" onclick={speakEntry} class="spell-bird" aria-label="Listen">
+									<img src="/bird.svg" style="width: 100%; height: 100%; object-fit: contain" alt="" />
+								</button>
 								<button type="button" onclick={() => { void flip('backward', () => { spreadState = { kind: 'toc' }; }); }} class="spell-entries" aria-label="Recent entries">
 									<img src="/entries.svg" style="width: 100%; height: 100%; object-fit: contain" alt="" />
 								</button>
@@ -1534,7 +1547,8 @@ $effect(() => {
 
 	.spell-settings,
 	.spell-today,
-	.spell-entries {
+	.spell-entries,
+	.spell-bird {
 		position: relative;
 		background: transparent;
 		border: none;
@@ -1574,7 +1588,8 @@ $effect(() => {
 
 	.spell-settings:hover,
 	.spell-today:hover,
-	.spell-entries:hover {
+	.spell-entries:hover,
+	.spell-bird:hover {
 		opacity: 1;
 	}
 
@@ -1582,12 +1597,14 @@ $effect(() => {
 	.spell-panel.is-closed .spell-flower::after { content: "open"; }
 	.spell-panel.is-open  .spell-flower::after  { content: "close"; }
 	.spell-quill::after    { content: "speak"; }
+	.spell-bird::after     { content: "listen"; }
 	.spell-today::after    { content: "today"; }
 	.spell-entries::after  { content: "recent entries"; }
 	.spell-settings::after { content: "settings"; }
 
 	.spell-flower::after,
 	.spell-quill::after,
+	.spell-bird::after,
 	.spell-today::after,
 	.spell-entries::after,
 	.spell-settings::after {
@@ -1613,6 +1630,8 @@ $effect(() => {
 	.spell-flower:focus-visible::after,
 	.spell-quill:hover::after,
 	.spell-quill:focus-within::after,
+	.spell-bird:hover::after,
+	.spell-bird:focus-visible::after,
 	.spell-today:hover::after,
 	.spell-today:focus-visible::after,
 	.spell-entries:hover::after,
