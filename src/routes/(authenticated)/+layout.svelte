@@ -1470,13 +1470,22 @@ $effect(() => {
 		opacity: 0;
 		transform: translateX(-0.5rem);
 		pointer-events: none;
-		transition: opacity 0.45s ease 0.45s, transform 0.45s ease 0.45s;
+		/* Closing transition: fade out fast and immediately, so the content
+		   is gone before the panel finishes shrinking — otherwise the panel
+		   is small but the spell-list text is still visible "ghosted" outside
+		   the panel's box (panel has overflow:visible so the tooltip can
+		   render below). The opening transition is overridden by the
+		   .is-open rule below with a delay so the text appears after the
+		   panel has grown. */
+		transition: opacity 0.25s ease 0s, transform 0.25s ease 0s;
 	}
 
 	.spell-panel.is-open .spell-panel-content {
 		opacity: 1;
 		transform: translateX(0);
 		pointer-events: auto;
+		/* Opening: delay until the panel has mostly grown, then fade in. */
+		transition: opacity 0.45s ease 0.45s, transform 0.45s ease 0.45s;
 	}
 
 	.spell-title {
