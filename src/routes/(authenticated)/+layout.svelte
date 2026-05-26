@@ -248,6 +248,7 @@ $effect(() => {
       prevDate = d.prevDate ?? null;
       nextDate = d.nextDate ?? null;
       entryDatePreviews = d.entryDatePreviews ?? [];
+      stopBird();
     }
   });
 });
@@ -427,6 +428,12 @@ function onFlipPrev() {
 
 type BirdPhase = 'idle' | 'playing' | 'paused';
 let birdPhase: BirdPhase = $state('idle');
+
+function stopBird() {
+  if (typeof window === 'undefined' || !window.speechSynthesis) return;
+  window.speechSynthesis.cancel();
+  birdPhase = 'idle';
+}
 
 function speakEntry() {
   if (typeof window === 'undefined' || !window.speechSynthesis) return;
