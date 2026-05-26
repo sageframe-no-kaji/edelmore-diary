@@ -4,9 +4,11 @@ import { page } from '$app/stores';
 import CalendarModal from '$lib/components/CalendarModal.svelte';
 import CoverPage from '$lib/components/CoverPage.svelte';
 import ExLibrisPage from '$lib/components/ExLibrisPage.svelte';
+import MicQuill from '$lib/components/MicQuill.svelte';
 import Spread from '$lib/components/Spread.svelte';
 import TocPage from '$lib/components/TocPage.svelte';
 import { findCover } from '$lib/covers.js';
+import { insertAtCursor } from '$lib/cursor.js';
 import { todayIso } from '$lib/dates.js';
 import type { EntryDatePreview } from '$lib/db.js';
 import { findSplitIndex, snapToWordBreak } from '$lib/overflow.js';
@@ -295,6 +297,45 @@ async function navigateTo(date: string) {
   await goto(`/${date}`);
 }
 
+/* v8 ignore next 35 */
+function handleTranscriptionInsert(text: string) {
+  if (!text) return;
+
+  // Target the textarea the user was LAST writing in (sticky across blur).
+  // The user just clicked the mic-quill button, so activeEditor is null —
+  // lastActiveEditor remembers which side they came from.
+  const target = lastActiveEditor === 'right' ? rightTextareaEl : textareaEl;
+
+  if (!target) {
+    // No textarea available (rare — would mean entry state but textareas not mounted).
+    // Append to content with a leading space if needed.
+    const sep = content && !/\s$/.test(content) ? ' ' : '';
+    content = content + sep + text;
+    return;
+  }
+
+  const { newValue, cursorPos } = insertAtCursor(target, text);
+  target.value = newValue;
+
+  // Reconstruct `content` from the textarea's slice — same pattern as the
+  // oninput handlers on the entry textareas.
+  if (target === rightTextareaEl) {
+    const rightStart = splitPoints[entryPageSpread * 2];
+    const rightEnd = splitPoints[entryPageSpread * 2 + 1];
+    if (rightStart === undefined) return;
+    const suffix = rightEnd !== undefined ? content.slice(rightEnd) : '';
+    content = content.slice(0, rightStart) + target.value + suffix;
+  } else {
+    const leftStart = entryPageSpread === 0 ? 0 : (splitPoints[entryPageSpread * 2 - 1] ?? 0);
+    const leftEnd = splitPoints[entryPageSpread * 2];
+    const suffix = leftEnd !== undefined ? content.slice(leftEnd) : '';
+    content = content.slice(0, leftStart) + target.value + suffix;
+  }
+
+  target.setSelectionRange(cursorPos, cursorPos);
+  target.focus();
+}
+
 function onFlipNext() {
   if (spreadState.kind === 'cover') {
     flip('forward', () => {
@@ -547,6 +588,12 @@ let measureEl: HTMLTextAreaElement | null = null;
 let pendingCursorRestore: { absPos: number; side: 'left' | 'right' } | null = null;
 // biome-ignore lint/style/useConst: reassigned in template event handlers — Biome doesn't see those
 let activeEditor: 'left' | 'right' | null = $state(null);
+// Sticky version of activeEditor — set on focus, NOT cleared on blur.
+// Used by the mic-quill so transcription inserts into the textarea the
+// user was last writing in, even after clicking the mic button steals
+// focus from the textarea.
+// biome-ignore lint/style/useConst: reassigned in template event handlers
+let lastActiveEditor: 'left' | 'right' = $state('left');
 let spellsOpen = $state(true);
 
 $effect(() => {
@@ -829,7 +876,7 @@ $effect(() => {
 							{/if}
 							<textarea
 								bind:this={textareaEl}
-								onfocus={() => { activeEditor = 'left'; }}
+								onfocus={() => { activeEditor = 'left'; lastActiveEditor = 'left'; }}
 								onblur={() => { activeEditor = null; }}
 								oninput={(e) => {
 									const leftEnd = splitPoints[entryPageSpread * 2];
@@ -917,7 +964,7 @@ $effect(() => {
 							{/if}
 							<textarea
 								bind:this={rightTextareaEl}
-								onfocus={() => { activeEditor = 'right'; }}
+								onfocus={() => { activeEditor = 'right'; lastActiveEditor = 'right'; }}
 								onblur={() => { activeEditor = null; }}
 								oninput={(e) => {
 									const rightEnd = splitPoints[entryPageSpread * 2 + 1];
@@ -999,6 +1046,9 @@ $effect(() => {
 									<li><span class="spell-code">~word~</span> <s>crossed out</s></li>
 							</ul>
 							<div class="spell-buttons">
+								<div class="spell-quill">
+									<MicQuill oninsert={handleTranscriptionInsert} />
+								</div>
 								<button type="button" onclick={() => { void flip('backward', () => { spreadState = { kind: 'toc' }; }); }} class="spell-entries" aria-label="Recent entries">
 									<img src="/entries.svg" style="width: 100%; height: 100%; object-fit: contain" alt="" />
 								</button>
@@ -1039,6 +1089,9 @@ $effect(() => {
 					{($page.data as any).displayDate ?? ''}
 				</span>
 				<div class="flex items-center gap-3">
+					<div class="mobile-mic-quill">
+						<MicQuill oninsert={handleTranscriptionInsert} />
+					</div>
 					<button
 						type="button"
 						onclick={openSettings}
@@ -1487,6 +1540,29 @@ $effect(() => {
 		height: 3.6cqi;
 	}
 
+	/* MicQuill wrapper — sized to match the existing ribbon buttons. The
+	   component itself is layout-agnostic; this wrapper provides the slot. */
+	.spell-quill {
+		position: relative;
+		width: 3.6cqi;
+		height: 3.6cqi;
+		flex-shrink: 0;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+	}
+
+	/* MicQuill on mobile top nav — fixed rem sizing (no container query). */
+	.mobile-mic-quill {
+		position: relative;
+		width: 1.5rem;
+		height: 1.5rem;
+		flex-shrink: 0;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+	}
+
 	.spell-settings:hover,
 	.spell-today:hover,
 	.spell-entries:hover {
@@ -1496,11 +1572,13 @@ $effect(() => {
 	/* ── Ribbon tooltips ─────────────────────────────────────────────────── */
 	.spell-panel.is-closed .spell-flower::after { content: "open"; }
 	.spell-panel.is-open  .spell-flower::after  { content: "close"; }
+	.spell-quill::after    { content: "speak"; }
 	.spell-today::after    { content: "today"; }
 	.spell-entries::after  { content: "recent entries"; }
 	.spell-settings::after { content: "settings"; }
 
 	.spell-flower::after,
+	.spell-quill::after,
 	.spell-today::after,
 	.spell-entries::after,
 	.spell-settings::after {
@@ -1524,6 +1602,8 @@ $effect(() => {
 
 	.spell-flower:hover::after,
 	.spell-flower:focus-visible::after,
+	.spell-quill:hover::after,
+	.spell-quill:focus-within::after,
 	.spell-today:hover::after,
 	.spell-today:focus-visible::after,
 	.spell-entries:hover::after,
