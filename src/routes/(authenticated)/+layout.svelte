@@ -425,23 +425,36 @@ function onFlipPrev() {
   }
 }
 
-let birdPlaying = $state(false);
+type BirdPhase = 'idle' | 'playing' | 'paused';
+let birdPhase: BirdPhase = $state('idle');
 
 function speakEntry() {
   if (typeof window === 'undefined' || !window.speechSynthesis) return;
+  const synth = window.speechSynthesis;
+
+  if (birdPhase === 'playing') {
+    synth.pause();
+    birdPhase = 'paused';
+    return;
+  }
+  if (birdPhase === 'paused') {
+    synth.resume();
+    birdPhase = 'playing';
+    return;
+  }
+
   const text = content?.trim();
   if (!text) return;
-  const synth = window.speechSynthesis;
   synth.cancel();
   const u = new SpeechSynthesisUtterance(text);
   u.onstart = () => {
-    birdPlaying = true;
+    birdPhase = 'playing';
   };
   u.onend = () => {
-    birdPlaying = false;
+    birdPhase = 'idle';
   };
   u.onerror = () => {
-    birdPlaying = false;
+    birdPhase = 'idle';
   };
   synth.speak(u);
 }
@@ -1070,7 +1083,7 @@ $effect(() => {
 								<div class="spell-quill">
 									<MicQuill oninsert={handleTranscriptionInsert} />
 								</div>
-								<button type="button" onclick={speakEntry} class="spell-bird" class:is-playing={birdPlaying} aria-label="Listen">
+								<button type="button" onclick={speakEntry} class="spell-bird" class:is-playing={birdPhase === 'playing'} class:is-paused={birdPhase === 'paused'} aria-label={birdPhase === 'playing' ? 'Pause' : birdPhase === 'paused' ? 'Resume' : 'Listen'}>
 									<img src="/bird.svg" style="width: 100%; height: 100%; object-fit: contain" alt="" />
 									<span class="spell-bird-note" aria-hidden="true">♪</span>
 								</button>
@@ -1602,7 +1615,8 @@ $effect(() => {
 	.spell-today:hover,
 	.spell-entries:hover,
 	.spell-bird:hover,
-	.spell-bird.is-playing {
+	.spell-bird.is-playing,
+	.spell-bird.is-paused {
 		opacity: 1;
 	}
 
@@ -1619,6 +1633,9 @@ $effect(() => {
 	}
 	.spell-bird.is-playing .spell-bird-note {
 		opacity: 1;
+	}
+	.spell-bird.is-paused .spell-bird-note {
+		opacity: 0.35;
 	}
 
 	/* ── Ribbon tooltips ─────────────────────────────────────────────────── */
