@@ -425,6 +425,8 @@ function onFlipPrev() {
   }
 }
 
+let birdPlaying = $state(false);
+
 function speakEntry() {
   if (typeof window === 'undefined' || !window.speechSynthesis) return;
   const text = content?.trim();
@@ -432,6 +434,15 @@ function speakEntry() {
   const synth = window.speechSynthesis;
   synth.cancel();
   const u = new SpeechSynthesisUtterance(text);
+  u.onstart = () => {
+    birdPlaying = true;
+  };
+  u.onend = () => {
+    birdPlaying = false;
+  };
+  u.onerror = () => {
+    birdPlaying = false;
+  };
   synth.speak(u);
 }
 
@@ -1059,8 +1070,9 @@ $effect(() => {
 								<div class="spell-quill">
 									<MicQuill oninsert={handleTranscriptionInsert} />
 								</div>
-								<button type="button" onclick={speakEntry} class="spell-bird" aria-label="Listen">
+								<button type="button" onclick={speakEntry} class="spell-bird" class:is-playing={birdPlaying} aria-label="Listen">
 									<img src="/bird.svg" style="width: 100%; height: 100%; object-fit: contain" alt="" />
+									<span class="spell-bird-note" aria-hidden="true">♪</span>
 								</button>
 								<button type="button" onclick={() => { void flip('backward', () => { spreadState = { kind: 'toc' }; }); }} class="spell-entries" aria-label="Recent entries">
 									<img src="/entries.svg" style="width: 100%; height: 100%; object-fit: contain" alt="" />
@@ -1589,7 +1601,23 @@ $effect(() => {
 	.spell-settings:hover,
 	.spell-today:hover,
 	.spell-entries:hover,
-	.spell-bird:hover {
+	.spell-bird:hover,
+	.spell-bird.is-playing {
+		opacity: 1;
+	}
+
+	.spell-bird-note {
+		position: absolute;
+		top: 0.2cqi;
+		right: 0.2cqi;
+		font-size: 1.6cqi;
+		line-height: 1;
+		color: #c8362d;
+		opacity: 0;
+		pointer-events: none;
+		transition: opacity 0.15s ease;
+	}
+	.spell-bird.is-playing .spell-bird-note {
 		opacity: 1;
 	}
 
