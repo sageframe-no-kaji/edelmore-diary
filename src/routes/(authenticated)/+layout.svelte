@@ -1040,7 +1040,7 @@ $effect(() => {
 							>{($page.data as any).displayDate ?? ''}</button>
 							{#if birdPlaying}
 								<div
-									class="absolute inset-0 h-full w-full overflow-hidden px-8 pt-12 pb-8 text-ink-900 leading-relaxed"
+									class="absolute inset-0 h-full w-full px-8 pt-12 pb-8 text-ink-900 leading-relaxed"
 									style={`font-size: var(--page-font-size); font-family: ${journalFontFamily}`}
 								>
 									<ReaderView
@@ -1157,7 +1157,7 @@ $effect(() => {
 						{#if rightStart !== undefined}
 							{#if birdPlaying}
 								<div
-									class="absolute inset-0 h-full w-full overflow-hidden px-8 pt-12 pb-8 text-ink-900 leading-relaxed"
+									class="absolute inset-0 h-full w-full px-8 pt-12 pb-8 text-ink-900 leading-relaxed"
 									style={`font-size: var(--page-font-size); font-family: ${journalFontFamily}`}
 								>
 									<ReaderView

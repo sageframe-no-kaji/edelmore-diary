@@ -71,7 +71,7 @@ async function scrollCurrentIntoView() {
     white-space: pre-wrap;
     word-break: normal;
     overflow-wrap: break-word;
-    overflow-y: auto;
+    overflow: visible;
     height: 100%;
   }
 
@@ -80,9 +80,32 @@ async function scrollCurrentIntoView() {
     font-style: italic;
   }
 
-  /* Temporary placeholder so we can visually confirm the highlight tracks
-     the audio word-by-word. Replaced with the honey-amber glow in E3. */
+  .reader-word {
+    transition:
+      background-color 220ms ease-out,
+      box-shadow 220ms ease-out,
+      text-shadow 220ms ease-out;
+    border-radius: 999px;
+    padding: 0.02em 0.3em;
+    margin: 0 -0.18em;
+  }
+
+  /* Hazy-dreamlike aura in the soft greens of the edelweiss leaves
+     (#85be45 light, #689f42 saturated). Wider footprint, less tall.
+     Two layered shadows give depth without making the glow scream. */
   .reader-word.is-current {
-    background: yellow;
+    background-color: rgba(133, 190, 69, 0.20);
+    box-shadow:
+      0 0 8px 2px rgba(133, 190, 69, 0.40),
+      0 0 22px 6px rgba(104, 159, 66, 0.18);
+    text-shadow:
+      0 0 5px rgba(133, 190, 69, 0.55),
+      0 0 12px rgba(104, 159, 66, 0.25);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .reader-word {
+      transition: none;
+    }
   }
 </style>
