@@ -1035,7 +1035,10 @@ $effect(() => {
 								aria-label="Open calendar"
 							>{($page.data as any).displayDate ?? ''}</button>
 							{#if birdPlaying}
-								<div class="absolute inset-0">
+								<div
+									class="absolute inset-0 h-full w-full overflow-hidden px-8 pt-12 pb-8 text-ink-900 leading-relaxed"
+									style={`font-size: var(--page-font-size); font-family: ${journalFontFamily}`}
+								>
 									<ReaderView
 										text={leftEnd !== undefined ? content.slice(leftStart, leftEnd) : content.slice(leftStart)}
 										sliceStart={leftStart}

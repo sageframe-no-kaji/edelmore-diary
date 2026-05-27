@@ -68,7 +68,6 @@ async function scrollCurrentIntoView() {
     font-size: inherit;
     line-height: inherit;
     color: inherit;
-    padding: inherit;
     white-space: pre-wrap;
     word-break: normal;
     overflow-wrap: break-word;
