@@ -454,9 +454,12 @@ function speakEntry() {
   }
 
   if (!content?.trim()) return;
+  // Start reading from the current spread's first character, not the top of the entry.
+  const startOffset = entryPageSpread === 0 ? 0 : (splitPoints[entryPageSpread * 2 - 1] ?? 0);
+  const textFromHere = content.slice(startOffset);
+  if (!textFromHere.trim()) return;
   synth.cancel();
-  // Use the unmodified content so onboundary.charIndex maps directly to splitPoints.
-  const u = new SpeechSynthesisUtterance(content);
+  const u = new SpeechSynthesisUtterance(textFromHere);
   birdLastAdvancedFromSpread = -1;
   u.onstart = () => {
     birdPhase = 'playing';
@@ -464,9 +467,11 @@ function speakEntry() {
   u.onboundary = (e) => {
     if (entryPageSpread === birdLastAdvancedFromSpread) return;
     const currentSpreadEnd = splitPoints[entryPageSpread * 2 + 1];
+    // charIndex is into textFromHere; add startOffset to compare against splitPoints.
+    const absoluteIndex = startOffset + e.charIndex;
     // ~15 chars of lookahead so the flip lands roughly when speech reaches the
     // boundary, instead of starting ~750ms after speech has already crossed it.
-    if (currentSpreadEnd !== undefined && e.charIndex > currentSpreadEnd - 15) {
+    if (currentSpreadEnd !== undefined && absoluteIndex > currentSpreadEnd - 15) {
       birdLastAdvancedFromSpread = entryPageSpread;
       onFlipNext();
     }
