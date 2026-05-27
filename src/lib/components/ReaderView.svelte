@@ -79,4 +79,10 @@ async function scrollCurrentIntoView() {
     color: rgba(0, 0, 0, 0.3);
     font-style: italic;
   }
+
+  /* Temporary placeholder so we can visually confirm the highlight tracks
+     the audio word-by-word. Replaced with the honey-amber glow in E3. */
+  .reader-word.is-current {
+    background: yellow;
+  }
 </style>
