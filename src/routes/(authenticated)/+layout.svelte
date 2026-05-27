@@ -669,6 +669,16 @@ $effect(() => {
     synth.removeEventListener('voiceschanged', refresh);
   };
 });
+
+function previewVoice() {
+  if (typeof window === 'undefined' || !window.speechSynthesis || !draftVoiceURI) return;
+  const synth = window.speechSynthesis;
+  synth.cancel();
+  const u = new SpeechSynthesisUtterance('Welcome to Edelmore.');
+  const picked = synth.getVoices().find((v) => v.voiceURI === draftVoiceURI);
+  if (picked) u.voice = picked;
+  synth.speak(u);
+}
 let settingsWarning = $state(false);
 let settingsWarningText = $state('You have unsaved changes.');
 let settingsBackArmed = $state(false);
@@ -1076,11 +1086,14 @@ $effect(() => {
 										{#if voiceOptions.length === 0}
 											<p class="text-[0.7rem] italic text-stone-400">No voices on this device yet.</p>
 										{:else}
-											<select bind:value={draftVoiceURI} class="w-full bg-transparent border-b border-stone-300 text-ink-900 text-sm pb-1 outline-none focus:border-stone-500 transition-colors">
-												{#each voiceOptions as v}
-													<option value={v.uri}>{v.name} ({v.lang})</option>
-												{/each}
-											</select>
+											<div class="flex items-center gap-2">
+												<select bind:value={draftVoiceURI} class="flex-1 bg-transparent border-b border-stone-300 text-ink-900 text-sm pb-1 outline-none focus:border-stone-500 transition-colors">
+													{#each voiceOptions as v}
+														<option value={v.uri}>{v.name} ({v.lang})</option>
+													{/each}
+												</select>
+												<button type="button" onclick={previewVoice} aria-label="Preview voice" class="w-7 h-7 border border-stone-300 text-stone-500 text-sm leading-none hover:border-stone-500 hover:text-ornament-gold transition-colors flex items-center justify-center">▶</button>
+											</div>
 										{/if}
 									</section>
 
