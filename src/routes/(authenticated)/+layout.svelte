@@ -12,6 +12,12 @@ import { findCover } from '$lib/covers.js';
 import { insertAtCursor } from '$lib/cursor.js';
 import { todayIso } from '$lib/dates.js';
 import type { EntryDatePreview } from '$lib/db.js';
+import {
+  audioBlobUrlFromBase64,
+  isKokoroVoiceUri,
+  type SpeakResponse,
+  type WordTiming,
+} from '$lib/narration.js';
 import { findSplitIndex, snapToWordBreak } from '$lib/overflow.js';
 import type { Snippet } from 'svelte';
 import { onMount, tick, untrack } from 'svelte';
@@ -449,9 +455,22 @@ let birdLastAdvancedFromSpread = -1;
 // spread-watching effect so the bird isn't stopped by its own page-turn.
 let birdInitiatedFlip = false;
 
+// ── TTS (Kokoro) path state ───────────────────────────────────────────────────
+// These are only live during Kokoro TTS playback. All are cleaned up by
+// cleanupTtsAudio(). The Web Speech path does not use any of these.
+let birdAudioEl: HTMLAudioElement | null = null;
+let birdAudioBlobUrl: string | null = null;
+let birdTtsBoundaryInterval: ReturnType<typeof setInterval> | null = null;
+let birdTtsTimings: WordTiming[] = [];
+let birdTtsBoundaryIdx = 0;
+let birdTtsBaseOffset = 0;
+let birdTtsFlipScheduledAt: number | null = null;
+
 function stopBird() {
-  if (typeof window === 'undefined' || !window.speechSynthesis) return;
-  window.speechSynthesis.cancel();
+  if (typeof window !== 'undefined' && window.speechSynthesis) {
+    window.speechSynthesis.cancel();
+  }
+  cleanupTtsAudio();
   birdPhase = 'idle';
   currentNarrationCharIndex = null;
 }
@@ -471,15 +490,144 @@ $effect(() => {
   });
 });
 
-// Speak `content` from an absolute character offset, at the current birdRate.
-// Caller is responsible for synth.cancel() if needed.
-function speakFromOffset(offset: number) {
+// ── speakFromOffset dispatcher ───────────────────────────────────────────────
+//
+// Routes to the Kokoro TTS path (speakFromOffsetViaTts) when the selected
+// voice is a Kokoro slug; falls back to Web Speech (speakFromOffsetViaWebSpeech)
+// otherwise. Also falls back to Web Speech if the TTS path throws.
+
+async function speakFromOffset(offset: number) {
+  if (isKokoroVoiceUri(voiceURI)) {
+    try {
+      await speakFromOffsetViaTts(offset);
+      return;
+    } catch (e) {
+      console.warn('TTS playback failed; falling back to Web Speech', e);
+      // Intentional fall-through to Web Speech below.
+    }
+  }
+  speakFromOffsetViaWebSpeech(offset);
+}
+
+async function speakFromOffsetViaTts(offset: number) {
+  cleanupTtsAudio();
+
+  const textFromHere = content.slice(offset);
+  if (!textFromHere.trim()) return;
+
+  birdAbsoluteIndex = offset;
+  birdTtsBaseOffset = offset;
+
+  const response = await fetch('/api/speak', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ text: textFromHere, voice: voiceURI, speed: birdRate }),
+  });
+  if (!response.ok) throw new Error(`TTS HTTP ${response.status}`);
+  const payload: SpeakResponse = await response.json();
+
+  birdTtsTimings = payload.words ?? [];
+  birdTtsBoundaryIdx = 0;
+  birdTtsFlipScheduledAt = computeFlipScheduleTime();
+
+  birdAudioBlobUrl = audioBlobUrlFromBase64(payload.audio, payload.format);
+  birdAudioEl = new Audio(birdAudioBlobUrl);
+
+  birdAudioEl.onplay = () => {
+    birdPhase = 'playing';
+    startBoundaryPolling();
+  };
+  birdAudioEl.onpause = () => {
+    // Distinguish "paused by user" (birdPhase already 'paused') from "ended".
+    if (birdPhase === 'playing') birdPhase = 'paused';
+  };
+  birdAudioEl.onended = () => {
+    cleanupTtsAudio();
+    birdPhase = 'idle';
+    currentNarrationCharIndex = null;
+  };
+  birdAudioEl.onerror = () => {
+    cleanupTtsAudio();
+    birdPhase = 'idle';
+    currentNarrationCharIndex = null;
+  };
+
+  await birdAudioEl.play();
+}
+
+/**
+ * Find the first word whose absolute char position is past the current
+ * spread's end. Return that word's audio start time minus 250ms (lookahead
+ * so the page turn lands just before the boundary word is spoken).
+ */
+function computeFlipScheduleTime(): number | null {
+  if (entryPageSpread === birdLastAdvancedFromSpread) return null;
+  const currentSpreadEnd = splitPoints[entryPageSpread * 2 + 1];
+  if (currentSpreadEnd === undefined) return null;
+  const flipBoundary = currentSpreadEnd - birdTtsBaseOffset;
+  for (const w of birdTtsTimings) {
+    if (w.char_start > flipBoundary) {
+      return Math.max(0, w.start - 0.25);
+    }
+  }
+  return null;
+}
+
+function startBoundaryPolling() {
+  if (birdTtsBoundaryInterval) clearInterval(birdTtsBoundaryInterval);
+  birdTtsBoundaryInterval = setInterval(() => {
+    if (!birdAudioEl || birdAudioEl.paused) return;
+    const t = birdAudioEl.currentTime;
+
+    // Advance the current-word pointer and update the highlight index.
+    while (
+      birdTtsBoundaryIdx < birdTtsTimings.length &&
+      birdTtsTimings[birdTtsBoundaryIdx].start <= t
+    ) {
+      const word = birdTtsTimings[birdTtsBoundaryIdx];
+      birdAbsoluteIndex = birdTtsBaseOffset + word.char_start;
+      currentNarrationCharIndex = birdAbsoluteIndex;
+      birdTtsBoundaryIdx += 1;
+    }
+
+    // Trigger page-turn at the scheduled time.
+    if (birdTtsFlipScheduledAt !== null && t >= birdTtsFlipScheduledAt) {
+      birdTtsFlipScheduledAt = null;
+      birdLastAdvancedFromSpread = entryPageSpread;
+      birdInitiatedFlip = true;
+      onFlipNext();
+    }
+  }, 50);
+}
+
+function cleanupTtsAudio() {
+  if (birdTtsBoundaryInterval) {
+    clearInterval(birdTtsBoundaryInterval);
+    birdTtsBoundaryInterval = null;
+  }
+  if (birdAudioEl) {
+    birdAudioEl.pause();
+    birdAudioEl.src = '';
+    birdAudioEl = null;
+  }
+  if (birdAudioBlobUrl) {
+    URL.revokeObjectURL(birdAudioBlobUrl);
+    birdAudioBlobUrl = null;
+  }
+  birdTtsTimings = [];
+  birdTtsBoundaryIdx = 0;
+  birdTtsFlipScheduledAt = null;
+}
+
+function speakFromOffsetViaWebSpeech(offset: number) {
   const textFromHere = content.slice(offset);
   if (!textFromHere.trim()) return;
   birdAbsoluteIndex = offset;
   const synth = window.speechSynthesis;
   const u = new SpeechSynthesisUtterance(textFromHere);
-  if (voiceURI) {
+  // Only apply the voiceURI when it's a Web Speech URI. If a Kokoro slug fell
+  // through here (TTS failure), let the browser pick its default voice.
+  if (voiceURI && !isKokoroVoiceUri(voiceURI)) {
     const picked = synth.getVoices().find((v) => v.voiceURI === voiceURI);
     if (picked) u.voice = picked;
   }
@@ -512,16 +660,23 @@ function speakFromOffset(offset: number) {
 }
 
 function speakEntry() {
-  if (typeof window === 'undefined' || !window.speechSynthesis) return;
-  const synth = window.speechSynthesis;
+  if (typeof window === 'undefined') return;
 
   if (birdPhase === 'playing') {
-    synth.pause();
+    if (birdAudioEl) {
+      birdAudioEl.pause();
+    } else if (window.speechSynthesis) {
+      window.speechSynthesis.pause();
+    }
     birdPhase = 'paused';
     return;
   }
   if (birdPhase === 'paused') {
-    synth.resume();
+    if (birdAudioEl) {
+      void birdAudioEl.play();
+    } else if (window.speechSynthesis) {
+      window.speechSynthesis.resume();
+    }
     birdPhase = 'playing';
     return;
   }
@@ -530,8 +685,9 @@ function speakEntry() {
   // Start reading from the current spread's first character, not the top of the entry.
   const startOffset = entryPageSpread === 0 ? 0 : (splitPoints[entryPageSpread * 2 - 1] ?? 0);
   birdLastAdvancedFromSpread = -1;
-  synth.cancel();
-  speakFromOffset(startOffset);
+  if (window.speechSynthesis) window.speechSynthesis.cancel();
+  cleanupTtsAudio();
+  void speakFromOffset(startOffset);
 }
 
 function setBirdRate(rate: number) {
@@ -539,11 +695,12 @@ function setBirdRate(rate: number) {
   if (clamped === birdRate) return;
   birdRate = clamped;
   if (birdPhase !== 'playing' && birdPhase !== 'paused') return;
-  // Restart from current position at the new rate. The Web Speech API
-  // doesn't expose a live rate setter — we have to cancel and re-speak.
-  if (typeof window === 'undefined' || !window.speechSynthesis) return;
-  window.speechSynthesis.cancel();
-  speakFromOffset(birdAbsoluteIndex);
+  // Restart from current position at the new rate. Neither Web Speech nor
+  // HTMLAudioElement expose a live rate setter — cancel and re-speak.
+  if (typeof window === 'undefined') return;
+  if (window.speechSynthesis) window.speechSynthesis.cancel();
+  cleanupTtsAudio();
+  void speakFromOffset(birdAbsoluteIndex);
 }
 
 function changeBirdRate(delta: number) {
@@ -655,25 +812,58 @@ let draftFontSizeCqw = $state(untrack(() => fontSizeCqw));
 let draftJournalFont = $state(untrack(() => journalFont as JournalFont));
 let draftPin = $state('');
 let draftConfirm = $state('');
-// English voices installed on this device, refreshed when speechSynthesis
-// fires `voiceschanged` (Chrome loads voices asynchronously on first paint).
+// Voice picker state.
+//
+// Kokoro voices (pre-selected for the picker from the 67 available) are loaded
+// once on mount via /api/speak/voices and merged above browser voices in the
+// select. The KOKORO_FEATURED_VOICES list matches the four voices the
+// practitioner tested; the picker shows only these four, in order.
+//
+// Browser voices (English only) are loaded from speechSynthesis and refreshed
+// on `voiceschanged` (Chrome loads them asynchronously on first paint).
 // We key by voiceURI because macOS ships duplicate `name`s (e.g. two "Daniel").
-type VoiceOption = { uri: string; name: string; lang: string; isDefault: boolean };
+type VoiceOption = {
+  uri: string;
+  name: string;
+  lang: string;
+  isDefault: boolean;
+  source: 'kokoro' | 'browser';
+};
+// Ordered list of featured Kokoro voices shown in the picker.
+const KOKORO_FEATURED_VOICES = ['bf_emma', 'am_echo', 'af_bella', 'bm_daniel'] as const;
+const KOKORO_VOICE_LABELS: Record<string, string> = {
+  bf_emma: 'Emma (British)',
+  am_echo: 'Echo (American)',
+  af_bella: 'Bella (American)',
+  bm_daniel: 'Daniel (British)',
+};
 let voiceOptions: VoiceOption[] = $state([]);
+let kokoroOffline = $state(false);
 let draftVoiceURI: string | null = $state(untrack(() => voiceURI));
 
 $effect(() => {
   if (typeof window === 'undefined' || !window.speechSynthesis) return;
   const synth = window.speechSynthesis;
   const refresh = () => {
-    voiceOptions = synth
+    const browserVoices: VoiceOption[] = synth
       .getVoices()
       .filter((v) => v.lang.toLowerCase().startsWith('en'))
       .sort((a, b) => a.name.localeCompare(b.name))
-      .map((v) => ({ uri: v.voiceURI, name: v.name, lang: v.lang, isDefault: v.default }));
+      .map((v) => ({
+        uri: v.voiceURI,
+        name: v.name,
+        lang: v.lang,
+        isDefault: v.default,
+        source: 'browser' as const,
+      }));
+    // Merge: keep any Kokoro voices already in voiceOptions (loaded async),
+    // then append browser voices.
+    const existing = voiceOptions.filter((v) => v.source === 'kokoro');
+    voiceOptions = [...existing, ...browserVoices];
     // Fall back to device default only when nothing has been saved or picked.
     if (!voiceURI && !draftVoiceURI && voiceOptions.length > 0) {
-      const fallback = voiceOptions.find((v) => v.isDefault) ?? voiceOptions[0];
+      const fallback =
+        voiceOptions.find((v) => v.source === 'browser' && v.isDefault) ?? voiceOptions[0];
       draftVoiceURI = fallback.uri;
     }
   };
@@ -684,8 +874,69 @@ $effect(() => {
   };
 });
 
+// Fetch Kokoro voices once on mount (async — doesn't block the browser voice load).
+$effect(() => {
+  if (typeof window === 'undefined') return;
+  fetch('/api/speak/voices')
+    .then(async (res) => {
+      if (!res.ok) {
+        kokoroOffline = true;
+        return;
+      }
+      const payload = await res.json();
+      // The upstream returns { voices: [{ id, name }, ...] }. Filter to the
+      // featured four and present them in the prescribed order.
+      const available = new Set(
+        (payload.voices ?? []).map((v: { id: string }) => v.id)
+      );
+      if (available.size === 0) {
+        kokoroOffline = true;
+        return;
+      }
+      const kokoroVoices: VoiceOption[] = KOKORO_FEATURED_VOICES.filter((id) =>
+        available.has(id)
+      ).map((id) => ({
+        uri: id,
+        name: KOKORO_VOICE_LABELS[id] ?? id,
+        lang: 'en',
+        isDefault: false,
+        source: 'kokoro' as const,
+      }));
+      kokoroOffline = kokoroVoices.length === 0;
+      // Prepend Kokoro voices; retain existing browser voices.
+      const existing = voiceOptions.filter((v) => v.source === 'browser');
+      voiceOptions = [...kokoroVoices, ...existing];
+    })
+    .catch(() => {
+      kokoroOffline = true;
+    });
+});
+
 function previewVoice() {
-  if (typeof window === 'undefined' || !window.speechSynthesis || !draftVoiceURI) return;
+  if (typeof window === 'undefined' || !draftVoiceURI) return;
+  // Kokoro voices are previewed via the TTS path (full round-trip). Browser
+  // voices are previewed via Web Speech directly.
+  if (isKokoroVoiceUri(draftVoiceURI)) {
+    // Short preview via the TTS shim — fire and forget.
+    fetch('/api/speak', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text: 'Welcome to Edelmore.', voice: draftVoiceURI, speed: 1.0 }),
+    })
+      .then(async (res) => {
+        if (!res.ok) return;
+        const payload = await res.json();
+        const url = audioBlobUrlFromBase64(payload.audio, payload.format);
+        const audio = new Audio(url);
+        audio.onended = () => URL.revokeObjectURL(url);
+        void audio.play();
+      })
+      .catch(() => {
+        // Preview failure is silent — it's cosmetic.
+      });
+    return;
+  }
+  if (!window.speechSynthesis) return;
   const synth = window.speechSynthesis;
   synth.cancel();
   const u = new SpeechSynthesisUtterance('Welcome to Edelmore.');
@@ -1124,12 +1375,24 @@ $effect(() => {
 										{:else}
 											<div class="flex items-center gap-2">
 												<select bind:value={draftVoiceURI} class="flex-1 bg-transparent border-b border-stone-300 text-ink-900 text-sm pb-1 outline-none focus:border-stone-500 transition-colors">
-													{#each voiceOptions as v}
-														<option value={v.uri}>{v.name} ({v.lang})</option>
-													{/each}
+													{#if !kokoroOffline}
+														<optgroup label="✦ Kokoro voices">
+															{#each voiceOptions.filter((v) => v.source === 'kokoro') as v (v.uri)}
+																<option value={v.uri}>{v.name}</option>
+															{/each}
+														</optgroup>
+													{/if}
+													<optgroup label="Browser voices">
+														{#each voiceOptions.filter((v) => v.source === 'browser') as v (v.uri)}
+															<option value={v.uri}>{v.name} ({v.lang})</option>
+														{/each}
+													</optgroup>
 												</select>
 												<button type="button" onclick={previewVoice} aria-label="Preview voice" class="w-7 h-7 border border-stone-300 text-stone-500 text-sm leading-none hover:border-stone-500 hover:text-ornament-gold transition-colors flex items-center justify-center">▶</button>
 											</div>
+											{#if kokoroOffline}
+												<p class="text-[0.6rem] italic text-stone-400 mt-1">Voice server is offline — only browser voices available.</p>
+											{/if}
 										{/if}
 									</section>
 
