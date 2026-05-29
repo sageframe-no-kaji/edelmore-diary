@@ -930,6 +930,11 @@ $effect(() => {
         source: 'kokoro' as const,
       }));
       kokoroOffline = kokoroVoiceOptions.length === 0;
+      // Kokoro is live — if the user has a browser voice selected, upgrade
+      // to the first Kokoro voice so the picker doesn't show a blank selection.
+      if (kokoroVoiceOptions.length > 0 && !isKokoroVoiceUri(untrack(() => draftVoiceURI))) {
+        untrack(() => { draftVoiceURI = kokoroVoiceOptions[0].uri; });
+      }
     })
     .catch(() => {
       kokoroOffline = true;
@@ -1394,23 +1399,20 @@ $effect(() => {
 
 									<section>
 										<p class="text-[0.6rem] tracking-[0.22em] uppercase text-stone-400 mb-2">Reading Voice</p>
-										{#if voiceOptions.length === 0}
+										{#if kokoroVoiceOptions.length === 0 && browserVoiceOptions.length === 0}
 											<p class="text-[0.7rem] italic text-stone-400">No voices on this device yet.</p>
 										{:else}
 											<div class="flex items-center gap-2">
 												<select bind:value={draftVoiceURI} class="flex-1 bg-transparent border-b border-stone-300 text-ink-900 text-sm pb-1 outline-none focus:border-stone-500 transition-colors">
-													{#if !kokoroOffline}
-														<optgroup label="✦ Kokoro voices">
-															{#each voiceOptions.filter((v) => v.source === 'kokoro') as v (v.uri)}
-																<option value={v.uri}>{v.name}</option>
-															{/each}
-														</optgroup>
-													{/if}
-													<optgroup label="Browser voices">
-														{#each voiceOptions.filter((v) => v.source === 'browser') as v (v.uri)}
+													{#if kokoroVoiceOptions.length > 0}
+														{#each kokoroVoiceOptions as v (v.uri)}
+															<option value={v.uri}>{v.name}</option>
+														{/each}
+													{:else}
+														{#each browserVoiceOptions as v (v.uri)}
 															<option value={v.uri}>{v.name} ({v.lang})</option>
 														{/each}
-													</optgroup>
+													{/if}
 												</select>
 												<button type="button" onclick={previewVoice} aria-label="Preview voice" class="w-7 h-7 border border-stone-300 text-stone-500 text-sm leading-none hover:border-stone-500 hover:text-ornament-gold transition-colors flex items-center justify-center">▶</button>
 											</div>
