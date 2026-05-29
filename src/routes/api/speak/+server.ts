@@ -146,7 +146,10 @@ export const POST: RequestHandler = async ({ request, locals }) => {
     voice: body.voice,
     input: body.text,
     response_format: 'mp3',
-    speed: body.speed ?? 1.0,
+    // Speed is handled client-side via HTMLAudioElement.playbackRate so that
+    // rate changes during playback don't require a re-fetch. Always generate
+    // at 1.0; the browser applies pitch-corrected speed on playback.
+    speed: 1.0,
     stream: false,
     return_timestamps: true,
   };

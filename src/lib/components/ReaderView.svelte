@@ -71,7 +71,7 @@ async function scrollCurrentIntoView() {
     white-space: pre-wrap;
     word-break: normal;
     overflow-wrap: break-word;
-    overflow: visible;
+    overflow: hidden;
     height: 100%;
   }
 

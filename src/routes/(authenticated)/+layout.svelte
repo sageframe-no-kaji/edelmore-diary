@@ -435,12 +435,12 @@ function onFlipPrev() {
   }
 }
 
-type BirdPhase = 'idle' | 'playing' | 'paused';
-let birdPhase: BirdPhase = $state('idle');
+type BirdPhase = 'idle' | 'loading' | 'playing' | 'paused';
+let birdPhase = $state<BirdPhase>('idle');
 // True while the bird is actively narrating (playing OR paused). When true,
 // the entry page swaps its textareas for a read-only ReaderView with
 // word-by-word highlighting. See ho-07.1.
-const birdPlaying = $derived(birdPhase !== 'idle');
+const birdPlaying = $derived(birdPhase === 'playing' || birdPhase === 'paused');
 // Absolute char index of the word the bird is currently speaking. Null when
 // idle. ReaderView consumes this to highlight the active word.
 let currentNarrationCharIndex: number | null = $state(null);
@@ -515,16 +515,27 @@ async function speakFromOffsetViaTts(offset: number) {
   const textFromHere = content.slice(offset);
   if (!textFromHere.trim()) return;
 
+  birdPhase = 'loading';
   birdAbsoluteIndex = offset;
   birdTtsBaseOffset = offset;
 
-  const response = await fetch('/api/speak', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ text: textFromHere, voice: voiceURI, speed: birdRate }),
-  });
-  if (!response.ok) throw new Error(`TTS HTTP ${response.status}`);
-  const payload: SpeakResponse = await response.json();
+  let payload: SpeakResponse;
+  try {
+    const response = await fetch('/api/speak', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text: textFromHere, voice: voiceURI, speed: birdRate }),
+    });
+    if (!response.ok) throw new Error(`TTS HTTP ${response.status}`);
+    payload = await response.json();
+  } catch (e) {
+    if (birdPhase === 'loading') birdPhase = 'idle';
+    throw e;
+  }
+
+  // Narration may have been cancelled while the fetch was in flight (stopBird,
+  // page navigation, rate change). Bail out so we don't start a second stream.
+  if (birdPhase !== 'loading') return;
 
   birdTtsTimings = payload.words ?? [];
   birdTtsBoundaryIdx = 0;
@@ -532,14 +543,18 @@ async function speakFromOffsetViaTts(offset: number) {
 
   birdAudioBlobUrl = audioBlobUrlFromBase64(payload.audio, payload.format);
   birdAudioEl = new Audio(birdAudioBlobUrl);
+  birdAudioEl.playbackRate = birdRate;
 
   birdAudioEl.onplay = () => {
     birdPhase = 'playing';
     startBoundaryPolling();
   };
   birdAudioEl.onpause = () => {
-    // Distinguish "paused by user" (birdPhase already 'paused') from "ended".
-    if (birdPhase === 'playing') birdPhase = 'paused';
+    // Only update state if the element is actually paused. The pause event
+    // fires asynchronously, so a rapid pause→resume means this event arrives
+    // after play() was already called — birdAudioEl.paused is false in that
+    // case and we correctly ignore it.
+    if (birdPhase === 'playing' && birdAudioEl?.paused) birdPhase = 'paused';
   };
   birdAudioEl.onended = () => {
     cleanupTtsAudio();
@@ -606,6 +621,12 @@ function cleanupTtsAudio() {
     birdTtsBoundaryInterval = null;
   }
   if (birdAudioEl) {
+    // Null handlers before pause so async media events from this element
+    // can't corrupt state after we've moved on.
+    birdAudioEl.onplay = null;
+    birdAudioEl.onpause = null;
+    birdAudioEl.onended = null;
+    birdAudioEl.onerror = null;
     birdAudioEl.pause();
     birdAudioEl.src = '';
     birdAudioEl = null;
@@ -661,6 +682,7 @@ function speakFromOffsetViaWebSpeech(offset: number) {
 
 function speakEntry() {
   if (typeof window === 'undefined') return;
+  if (birdPhase === 'loading') return;
 
   if (birdPhase === 'playing') {
     if (birdAudioEl) {
@@ -695,12 +717,16 @@ function setBirdRate(rate: number) {
   if (clamped === birdRate) return;
   birdRate = clamped;
   if (birdPhase !== 'playing' && birdPhase !== 'paused') return;
-  // Restart from current position at the new rate. Neither Web Speech nor
-  // HTMLAudioElement expose a live rate setter — cancel and re-speak.
   if (typeof window === 'undefined') return;
-  if (window.speechSynthesis) window.speechSynthesis.cancel();
-  cleanupTtsAudio();
-  void speakFromOffset(birdAbsoluteIndex);
+  if (birdAudioEl) {
+    // TTS path: HTMLAudioElement supports live playbackRate changes.
+    // currentTime is in media time, so word-timing comparisons stay correct.
+    birdAudioEl.playbackRate = clamped;
+  } else if (window.speechSynthesis) {
+    // Web Speech has no live rate setter — cancel and restart at new rate.
+    window.speechSynthesis.cancel();
+    void speakFromOffset(birdAbsoluteIndex);
+  }
 }
 
 function changeBirdRate(delta: number) {
@@ -837,7 +863,9 @@ const KOKORO_VOICE_LABELS: Record<string, string> = {
   af_bella: 'Bella (American)',
   bm_daniel: 'Daniel (British)',
 };
-let voiceOptions: VoiceOption[] = $state([]);
+let browserVoiceOptions: VoiceOption[] = $state([]);
+let kokoroVoiceOptions: VoiceOption[] = $state([]);
+let voiceOptions: VoiceOption[] = $derived([...kokoroVoiceOptions, ...browserVoiceOptions]);
 let kokoroOffline = $state(false);
 let draftVoiceURI: string | null = $state(untrack(() => voiceURI));
 
@@ -845,7 +873,8 @@ $effect(() => {
   if (typeof window === 'undefined' || !window.speechSynthesis) return;
   const synth = window.speechSynthesis;
   const refresh = () => {
-    const browserVoices: VoiceOption[] = synth
+    const seen = new Set<string>();
+    const freshBrowserVoices: VoiceOption[] = synth
       .getVoices()
       .filter((v) => v.lang.toLowerCase().startsWith('en'))
       .sort((a, b) => a.name.localeCompare(b.name))
@@ -855,16 +884,16 @@ $effect(() => {
         lang: v.lang,
         isDefault: v.default,
         source: 'browser' as const,
-      }));
-    // Merge: keep any Kokoro voices already in voiceOptions (loaded async),
-    // then append browser voices.
-    const existing = voiceOptions.filter((v) => v.source === 'kokoro');
-    voiceOptions = [...existing, ...browserVoices];
+      }))
+      .filter((v) => { if (seen.has(v.uri)) return false; seen.add(v.uri); return true; });
+    // Write once — never read browserVoiceOptions inside this effect.
+    browserVoiceOptions = freshBrowserVoices;
     // Fall back to device default only when nothing has been saved or picked.
-    if (!voiceURI && !draftVoiceURI && voiceOptions.length > 0) {
+    // untrack the read of draftVoiceURI so writing it doesn't re-trigger this effect.
+    if (!voiceURI && !untrack(() => draftVoiceURI) && freshBrowserVoices.length > 0) {
       const fallback =
-        voiceOptions.find((v) => v.source === 'browser' && v.isDefault) ?? voiceOptions[0];
-      draftVoiceURI = fallback.uri;
+        freshBrowserVoices.find((v) => v.isDefault) ?? freshBrowserVoices[0];
+      untrack(() => { draftVoiceURI = fallback.uri; });
     }
   };
   refresh();
@@ -884,8 +913,6 @@ $effect(() => {
         return;
       }
       const payload = await res.json();
-      // The upstream returns { voices: [{ id, name }, ...] }. Filter to the
-      // featured four and present them in the prescribed order.
       const available = new Set(
         (payload.voices ?? []).map((v: { id: string }) => v.id)
       );
@@ -893,7 +920,7 @@ $effect(() => {
         kokoroOffline = true;
         return;
       }
-      const kokoroVoices: VoiceOption[] = KOKORO_FEATURED_VOICES.filter((id) =>
+      kokoroVoiceOptions = KOKORO_FEATURED_VOICES.filter((id) =>
         available.has(id)
       ).map((id) => ({
         uri: id,
@@ -902,10 +929,7 @@ $effect(() => {
         isDefault: false,
         source: 'kokoro' as const,
       }));
-      kokoroOffline = kokoroVoices.length === 0;
-      // Prepend Kokoro voices; retain existing browser voices.
-      const existing = voiceOptions.filter((v) => v.source === 'browser');
-      voiceOptions = [...kokoroVoices, ...existing];
+      kokoroOffline = kokoroVoiceOptions.length === 0;
     })
     .catch(() => {
       kokoroOffline = true;
@@ -1291,7 +1315,7 @@ $effect(() => {
 							>{($page.data as any).displayDate ?? ''}</button>
 							{#if birdPlaying}
 								<div
-									class="absolute inset-0 h-full w-full px-8 pt-12 pb-8 text-ink-900 leading-relaxed"
+									class="absolute inset-0 h-full w-full overflow-hidden px-8 pt-12 pb-8 text-ink-900 leading-relaxed"
 									style={`font-size: var(--page-font-size); font-family: ${journalFontFamily}`}
 								>
 									<ReaderView
@@ -1420,7 +1444,7 @@ $effect(() => {
 						{#if rightStart !== undefined}
 							{#if birdPlaying}
 								<div
-									class="absolute inset-0 h-full w-full px-8 pt-12 pb-8 text-ink-900 leading-relaxed"
+									class="absolute inset-0 h-full w-full overflow-hidden px-8 pt-12 pb-8 text-ink-900 leading-relaxed"
 									style={`font-size: var(--page-font-size); font-family: ${journalFontFamily}`}
 								>
 									<ReaderView
@@ -1527,7 +1551,7 @@ $effect(() => {
 									<MicQuill oninsert={handleTranscriptionInsert} />
 								</div>
 								<div class="spell-bird-cluster">
-									<button type="button" onclick={speakEntry} class="spell-bird" class:is-playing={birdPhase === 'playing'} class:is-paused={birdPhase === 'paused'} aria-label={birdPhase === 'playing' ? 'Pause' : birdPhase === 'paused' ? 'Resume' : 'Listen'}>
+									<button type="button" onclick={speakEntry} class="spell-bird" class:is-loading={birdPhase === 'loading'} class:is-playing={birdPhase === 'playing'} class:is-paused={birdPhase === 'paused'} aria-label={birdPhase === 'loading' ? 'Preparing narration…' : birdPhase === 'playing' ? 'Pause' : birdPhase === 'paused' ? 'Resume' : 'Listen'}>
 										<img src="/bird.svg" style="width: 100%; height: 100%; object-fit: contain" alt="" />
 										<span class="spell-bird-note" aria-hidden="true">♪</span>
 									</button>
@@ -2091,6 +2115,19 @@ $effect(() => {
 	.spell-bird.is-paused .spell-bird-note {
 		opacity: 0.35;
 	}
+
+	@keyframes bird-waiting {
+		0%, 100% { opacity: 0.65; }
+		50%       { opacity: 1;    }
+	}
+	.spell-bird.is-loading {
+		opacity: 1;
+		cursor: default;
+	}
+	.spell-bird.is-loading img {
+		animation: bird-waiting 0.9s ease-in-out infinite;
+	}
+	.spell-bird.is-loading::after { content: "soon…"; }
 
 	/* Bird + speed-control cluster. The cluster takes the same slot the bird
 	   used to take; the speed control floats below the bird as an overlay so
