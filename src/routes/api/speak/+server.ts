@@ -17,14 +17,18 @@ import type { RequestHandler } from './$types';
  * Where WordTiming is:
  *   { word: string; start: number; end: number; char_start: number; char_end: number }
  *
- * The upstream returns word timestamps without character offsets; this shim
- * computes char_start / char_end by scanning the input string left-to-right
- * (see computeCharOffsets). See ho-process/notes/kokoro-service-contract.md
- * for the full upstream contract.
+ * On-demand startup: if DOCKER_API_URL and KOKORO_CONTAINER_NAME are set, the
+ * shim checks whether the Kokoro container is running before each request. If
+ * it is stopped, the shim starts it and polls TTS_VOICES_URL until the model
+ * responds (cold start ~15-30 s on an RTX 3050). The bird button stays in
+ * 'loading' state throughout — no special browser-side handling needed.
  *
  * Env vars:
- *   TTS_URL      — full URL to the upstream /dev/captioned_speech endpoint
- *   TTS_API_KEY  — optional; sent as Authorization: Bearer if set
+ *   TTS_URL               — full URL to /dev/captioned_speech
+ *   TTS_VOICES_URL        — URL to /v1/audio/voices (used for readiness polling)
+ *   TTS_API_KEY           — optional bearer token
+ *   DOCKER_API_URL        — Docker remote API base, e.g. http://192.168.1.22:2376
+ *   KOKORO_CONTAINER_NAME — container to start on demand, e.g. svc-kokoro
  *
  * Logging: failure modes only. Diary text, audio bytes, and word timings are
  * never logged.
@@ -62,7 +66,6 @@ interface SpeakResponse {
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-/** Map Kokoro's file-extension audio_format to an HTMLAudioElement-friendly MIME type. */
 function formatToMime(fmt: string): string {
   switch (fmt.toLowerCase()) {
     case 'mp3':
@@ -80,22 +83,11 @@ function formatToMime(fmt: string): string {
   }
 }
 
-/**
- * Compute char_start / char_end for each upstream word by scanning the
- * original input string left-to-right. Punctuation tokens like "." and ","
- * are treated exactly like regular words — indexOf finds them fine.
- *
- * When a word can't be found verbatim (e.g. normalised by TTS), char_start
- * and char_end are both set to the current cursor position so the downstream
- * consumer can treat them as "no new offset" — the previous highlight simply
- * holds until the next word that does match.
- */
 function computeCharOffsets(input: string, words: UpstreamWord[]): WordTiming[] {
   let cursor = 0;
   return words.map((w) => {
     const idx = input.indexOf(w.word, cursor);
     if (idx === -1) {
-      // Defensive: upstream's tokenised form doesn't appear verbatim in input.
       return {
         word: w.word,
         start: w.start_time,
@@ -116,6 +108,64 @@ function computeCharOffsets(input: string, words: UpstreamWord[]): WordTiming[] 
   });
 }
 
+function sleep(ms: number): Promise<void> {
+  return new Promise((r) => setTimeout(r, ms));
+}
+
+/**
+ * If DOCKER_API_URL and KOKORO_CONTAINER_NAME are configured, ensure the
+ * Kokoro container is running before we attempt a TTS request. On a cold
+ * start the model takes ~15-30 s to load; we poll the voices endpoint until
+ * it responds, then return. Times out silently after 60 s — the TTS request
+ * will then fail naturally and the browser falls back to Web Speech.
+ */
+async function ensureKokoroRunning(): Promise<void> {
+  const dockerApiUrl = env.DOCKER_API_URL;
+  const containerName = env.KOKORO_CONTAINER_NAME;
+  if (!dockerApiUrl || !containerName) return;
+
+  // Check running state via Docker remote API.
+  try {
+    const stateRes = await fetch(`${dockerApiUrl}/containers/${containerName}/json`);
+    if (stateRes.ok) {
+      const data = (await stateRes.json()) as { State: { Running: boolean } };
+      if (data.State.Running) return; // already up
+    }
+  } catch {
+    return; // Docker API unreachable — let TTS fail naturally
+  }
+
+  // Container is stopped — start it.
+  console.log('Kokoro container stopped; starting on demand');
+  try {
+    await fetch(`${dockerApiUrl}/containers/${containerName}/start`, { method: 'POST' });
+  } catch (e) {
+    console.error('Failed to start Kokoro container:', e instanceof Error ? e.message : e);
+    return;
+  }
+
+  // Poll the voices endpoint until Kokoro's model is loaded and responding.
+  const voicesUrl =
+    env.TTS_VOICES_URL ?? env.TTS_URL?.replace('/dev/captioned_speech', '/v1/audio/voices');
+  if (!voicesUrl) return;
+
+  const deadline = Date.now() + 60_000;
+  while (Date.now() < deadline) {
+    await sleep(2000);
+    try {
+      const res = await fetch(voicesUrl, { signal: AbortSignal.timeout(3000) });
+      if (res.ok) {
+        console.log('Kokoro ready');
+        return;
+      }
+    } catch {
+      // still loading
+    }
+  }
+  console.error('Kokoro did not become ready within 60 s');
+  // Proceed anyway — the TTS fetch below will 503 and the browser falls back.
+}
+
 // ── Request handler ───────────────────────────────────────────────────────────
 
 interface SpeakRequest {
@@ -134,21 +184,21 @@ export const POST: RequestHandler = async ({ request, locals }) => {
   if (!body?.text || typeof body.text !== 'string') throw error(400, 'Missing text');
   if (!body.voice || typeof body.voice !== 'string') throw error(400, 'Missing voice');
 
+  // Start Kokoro on demand if it is stopped (no-op when already running or
+  // when DOCKER_API_URL is not configured).
+  await ensureKokoroRunning();
+
   const headers: HeadersInit = { 'Content-Type': 'application/json' };
   const apiKey = env.TTS_API_KEY;
   if (apiKey) headers.Authorization = `Bearer ${apiKey}`;
 
-  // Per kokoro-service-contract.md: use /dev/captioned_speech with stream=false.
-  // response_format=mp3 is the default; return_timestamps ensures we always
-  // get the timestamps array even if the upstream default changes.
   const upstreamBody = {
     model: 'kokoro',
     voice: body.voice,
     input: body.text,
     response_format: 'mp3',
-    // Speed is handled client-side via HTMLAudioElement.playbackRate so that
-    // rate changes during playback don't require a re-fetch. Always generate
-    // at 1.0; the browser applies pitch-corrected speed on playback.
+    // Speed handled client-side via HTMLAudioElement.playbackRate — always
+    // generate at 1.0 so rate changes don't require a re-fetch.
     speed: 1.0,
     stream: false,
     return_timestamps: true,
@@ -179,7 +229,6 @@ export const POST: RequestHandler = async ({ request, locals }) => {
     throw error(502, 'TTS returned unexpected response');
   }
 
-  // Validate that the upstream payload has the expected shape before normalising.
   if (
     !raw ||
     typeof raw !== 'object' ||
@@ -192,7 +241,6 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 
   const upstream = raw as UpstreamPayload;
 
-  // Normalise: rename fields and compute character offsets.
   const responsePayload: SpeakResponse = {
     audio: upstream.audio,
     format: formatToMime(upstream.audio_format ?? 'mp3'),
