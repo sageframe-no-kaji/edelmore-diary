@@ -310,7 +310,24 @@ $effect(() => {
   return () => clearTimeout(timer);
 });
 
+// If the entry we're leaving has been emptied, delete it before we go.
+// The debounced autosave also deletes empty entries, but a quick navigation
+// cancels that timer — so a blank day would otherwise linger in the DB and
+// stay flippable. Pruning the preview list here drops it from the book
+// immediately; awaiting the DELETE keeps a subsequent server load from
+// re-reading the row before it's gone.
+async function flushEmptyEntry() {
+  if (spreadState.kind !== 'entry') return;
+  if (content.trim() !== '') return;
+  const date = spreadState.date;
+  entryDatePreviews = entryDatePreviews.filter((e) => e.entry_date !== date);
+  serverContent = '';
+  stopBird();
+  await fetch(`/api/entries/${date}`, { method: 'DELETE' });
+}
+
 async function navigateTo(date: string) {
+  await flushEmptyEntry();
   /* v8 ignore next 7 */
   const res = await fetch(`/api/entries/${date}`);
   if (res.ok) {
@@ -434,6 +451,7 @@ function onFlipPrev() {
       const target = prevDate;
       flip('backward', () => navigateTo(target));
     } else {
+      void flushEmptyEntry();
       flip('backward', () => {
         spreadState = { kind: 'toc' };
       });
