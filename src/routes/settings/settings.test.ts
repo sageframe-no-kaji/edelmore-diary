@@ -112,6 +112,94 @@ describe('actions.saveSettings', () => {
     expect(result?.status).toBe(400);
     expect(result?.data?.error).toBe('That display name is already in use.');
   });
+
+  it('returns 400 for an invalid journal font', async () => {
+    const result = await actions.saveSettings({
+      request: {
+        formData: async () =>
+          makeFormData({
+            username: 'Nova',
+            diary_title: 'Moon Notes',
+            font_size: '4.4',
+            journal_font: 'comic-sans',
+            pin: '',
+            confirm: '',
+          }),
+      },
+      locals: { db, user: defaultUser(userId) },
+    } as any);
+
+    expect(result?.status).toBe(400);
+    expect(result?.data?.error).toBe('Invalid journal font');
+  });
+
+  it('changes the PIN when pin and confirm are supplied and valid', async () => {
+    const readPinHash = () =>
+      (db.prepare('SELECT pin_hash FROM users WHERE id = ?').get(userId) as { pin_hash: string })
+        .pin_hash;
+    const before = readPinHash();
+    const result = await actions.saveSettings({
+      request: {
+        formData: async () =>
+          makeFormData({
+            username: 'Iona',
+            diary_title: 'Moon Notes',
+            font_size: '4.4',
+            journal_font: 'cedarville-cursive',
+            pin: '4321',
+            confirm: '4321',
+          }),
+      },
+      locals: { db, user: defaultUser(userId) },
+    } as any);
+
+    expect(result?.success).toBe(true);
+    expect(readPinHash()).not.toBe(before);
+  });
+
+  it('returns 400 when a supplied PIN is malformed', async () => {
+    const result = await actions.saveSettings({
+      request: {
+        formData: async () =>
+          makeFormData({
+            username: 'Iona',
+            diary_title: 'Moon Notes',
+            font_size: '4.4',
+            journal_font: 'cedarville-cursive',
+            pin: '12',
+            confirm: '12',
+          }),
+      },
+      locals: { db, user: defaultUser(userId) },
+    } as any);
+
+    expect(result?.status).toBe(400);
+    expect(result?.data?.error).toBe('PIN must be exactly 4 digits');
+  });
+
+  it('surfaces a generic error when a non-uniqueness write failure occurs', async () => {
+    // Closing the DB makes the writes throw a non-UNIQUE error, exercising the
+    // generic catch fallback.
+    db.close();
+
+    const result = await actions.saveSettings({
+      request: {
+        formData: async () =>
+          makeFormData({
+            username: 'Nova',
+            diary_title: 'Moon Notes',
+            font_size: '4.4',
+            journal_font: 'cedarville-cursive',
+            pin: '',
+            confirm: '',
+          }),
+      },
+      locals: { db, user: defaultUser(userId) },
+    } as any);
+
+    expect(result?.status).toBe(400);
+    expect(result?.data?.error).toBe('Could not save settings. Please try again.');
+  });
 });
 
 describe('actions.updateName', () => {

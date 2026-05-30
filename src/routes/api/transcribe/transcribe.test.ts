@@ -5,28 +5,29 @@ vi.mock('$env/dynamic/private', () => ({
   env: {
     TRANSCRIPTION_URL: 'http://whisper.test/asr',
     TRANSCRIPTION_API_KEY: '',
-  },
+  } as Record<string, string | undefined>,
 }));
 
+const env = (await import('$env/dynamic/private')).env as Record<string, string | undefined>;
 const { POST } = await import('./+server.js');
 
-function makeAudioFile(): File {
+function makeAudioFile(name = 'rec.webm'): File {
   const blob = new Blob([new Uint8Array([0, 1, 2, 3])], { type: 'audio/webm' });
-  return new File([blob], 'rec.webm', { type: 'audio/webm' });
+  return new File([blob], name, { type: 'audio/webm' });
 }
 
-function makeRequest(field = 'audio'): Request {
+function makeRequest(field = 'audio', fileName = 'rec.webm'): Request {
   const fd = new FormData();
-  fd.append(field, makeAudioFile());
+  fd.append(field, makeAudioFile(fileName));
   return new Request('http://localhost/api/transcribe', {
     method: 'POST',
     body: fd,
   });
 }
 
-function makeEvent(opts: { authed: boolean; field?: string }) {
+function makeEvent(opts: { authed: boolean; field?: string; fileName?: string }) {
   return {
-    request: makeRequest(opts.field),
+    request: makeRequest(opts.field, opts.fileName),
     locals: opts.authed
       ? {
           user: {
@@ -130,5 +131,62 @@ describe('POST /api/transcribe', () => {
     const response = await POST(makeEvent({ authed: true }));
     const body = await response.json();
     expect(body).toEqual({ text: '' });
+  });
+
+  it('returns 503 when TRANSCRIPTION_URL is not configured', async () => {
+    const saved = env.TRANSCRIPTION_URL;
+    env.TRANSCRIPTION_URL = '';
+    try {
+      await expect(POST(makeEvent({ authed: true }))).rejects.toMatchObject({ status: 503 });
+    } finally {
+      env.TRANSCRIPTION_URL = saved;
+    }
+  });
+
+  it('sends a bearer token when TRANSCRIPTION_API_KEY is set', async () => {
+    const saved = env.TRANSCRIPTION_API_KEY;
+    env.TRANSCRIPTION_API_KEY = 'whisper-secret';
+    (globalThis.fetch as ReturnType<typeof vi.fn>).mockResolvedValueOnce(
+      new Response(JSON.stringify({ text: 'ok' }), { status: 200 })
+    );
+    try {
+      await POST(makeEvent({ authed: true }));
+      const callArgs = (globalThis.fetch as ReturnType<typeof vi.fn>).mock.calls[0];
+      expect((callArgs[1].headers as Record<string, string>).Authorization).toBe(
+        'Bearer whisper-secret'
+      );
+    } finally {
+      env.TRANSCRIPTION_API_KEY = saved;
+    }
+  });
+
+  it('falls back to audio.webm when the uploaded file has no name', async () => {
+    (globalThis.fetch as ReturnType<typeof vi.fn>).mockResolvedValueOnce(
+      new Response(JSON.stringify({ text: 'ok' }), { status: 200 })
+    );
+
+    // Pass the FormData directly (a nameless File survives intact); routing it
+    // through a real multipart Request would re-parse it as a string field.
+    const fd = new FormData();
+    fd.append('audio', makeAudioFile(''));
+    const event = {
+      request: { formData: async () => fd },
+      locals: {
+        user: {
+          id: 1,
+          username: 'Iona',
+          cover_id: 'meadow',
+          font_size: 3.4,
+          journal_font: 'eb-garamond',
+          diary_title: 'Diary',
+        },
+      },
+    } as unknown as Parameters<typeof POST>[0];
+
+    await POST(event);
+    const callArgs = (globalThis.fetch as ReturnType<typeof vi.fn>).mock.calls[0];
+    const upstreamBody = callArgs[1].body as FormData;
+    const forwarded = upstreamBody.get('audio_file') as File;
+    expect(forwarded.name).toBe('audio.webm');
   });
 });

@@ -22,7 +22,14 @@
     }
   },
   "files": {
-    "ignore": [".svelte-kit/**", "build/**", "coverage/**", "node_modules/**", "static/**"]
+    "ignore": [
+      ".svelte-kit/**",
+      "build/**",
+      "coverage/**",
+      "node_modules/**",
+      "static/**",
+      "**/*.svelte"
+    ]
   },
   "overrides": [
     {

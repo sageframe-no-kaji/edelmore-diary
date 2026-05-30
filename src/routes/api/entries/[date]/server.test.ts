@@ -1,6 +1,6 @@
-import { type Database, createDb, createUser, upsertEntry } from '$lib/db.js';
+import { type Database, createDb, createUser, getEntry, upsertEntry } from '$lib/db.js';
 import { beforeEach, describe, expect, it } from 'vitest';
-import { GET } from './+server.js';
+import { DELETE, GET } from './+server.js';
 
 function freshDb(): Database {
   return createDb(':memory:');
@@ -48,5 +48,27 @@ describe('GET /api/entries/[date]', () => {
 
   it('returns 401 when user is not authenticated', async () => {
     await expect(GET(makeEvent('2026-05-15', null) as any)).rejects.toMatchObject({ status: 401 });
+  });
+
+  it('deletes an existing entry and returns ok', async () => {
+    upsertEntry(db, userId, '2026-05-15', 'Goodbye diary.');
+    const res = await DELETE(makeEvent('2026-05-15') as any);
+    expect(await res.json()).toEqual({ ok: true });
+    expect(getEntry(db, userId, '2026-05-15')).toBeUndefined();
+  });
+
+  it('DELETE on a non-existent entry is a no-op that returns ok', async () => {
+    const res = await DELETE(makeEvent('2026-05-15') as any);
+    expect(await res.json()).toEqual({ ok: true });
+  });
+
+  it('DELETE returns 400 for an invalid date format', async () => {
+    await expect(DELETE(makeEvent('nope') as any)).rejects.toMatchObject({ status: 400 });
+  });
+
+  it('DELETE returns 401 when user is not authenticated', async () => {
+    await expect(DELETE(makeEvent('2026-05-15', null) as any)).rejects.toMatchObject({
+      status: 401,
+    });
   });
 });

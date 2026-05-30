@@ -6,9 +6,10 @@ vi.mock('$env/dynamic/private', () => ({
     TTS_URL: 'http://kokoro.test/dev/captioned_speech',
     TTS_VOICES_URL: 'http://kokoro.test/v1/audio/voices',
     TTS_API_KEY: '',
-  },
+  } as Record<string, string | undefined>,
 }));
 
+const env = (await import('$env/dynamic/private')).env as Record<string, string | undefined>;
 const { GET } = await import('./+server.js');
 
 // ── Fixtures ──────────────────────────────────────────────────────────────────
@@ -87,5 +88,55 @@ describe('GET /api/speak/voices', () => {
     expect(response.status).toBe(200);
     const body = await response.json();
     expect(body).toEqual({ voices: [] });
+  });
+
+  it('derives the voices URL from TTS_URL when TTS_VOICES_URL is unset', async () => {
+    const saved = env.TTS_VOICES_URL;
+    env.TTS_VOICES_URL = undefined;
+    (globalThis.fetch as ReturnType<typeof vi.fn>).mockResolvedValueOnce(
+      new Response(JSON.stringify({ voices: [{ id: 'af_bella', name: 'af_bella' }] }), {
+        status: 200,
+      })
+    );
+    try {
+      await GET(makeAuthedEvent());
+      const calledUrl = String((globalThis.fetch as ReturnType<typeof vi.fn>).mock.calls[0][0]);
+      expect(calledUrl).toBe('http://kokoro.test/v1/audio/voices');
+    } finally {
+      env.TTS_VOICES_URL = saved;
+    }
+  });
+
+  it('returns { voices: [] } without calling upstream when no TTS URL is configured', async () => {
+    const savedVoices = env.TTS_VOICES_URL;
+    const savedTts = env.TTS_URL;
+    env.TTS_VOICES_URL = undefined;
+    env.TTS_URL = undefined;
+    try {
+      const response = await GET(makeAuthedEvent());
+      expect(response.status).toBe(200);
+      expect(await response.json()).toEqual({ voices: [] });
+      expect(globalThis.fetch).not.toHaveBeenCalled();
+    } finally {
+      env.TTS_VOICES_URL = savedVoices;
+      env.TTS_URL = savedTts;
+    }
+  });
+
+  it('sends a bearer token when TTS_API_KEY is set', async () => {
+    const saved = env.TTS_API_KEY;
+    env.TTS_API_KEY = 'secret-token';
+    (globalThis.fetch as ReturnType<typeof vi.fn>).mockResolvedValueOnce(
+      new Response(JSON.stringify({ voices: [] }), { status: 200 })
+    );
+    try {
+      await GET(makeAuthedEvent());
+      const callArgs = (globalThis.fetch as ReturnType<typeof vi.fn>).mock.calls[0];
+      expect((callArgs[1].headers as Record<string, string>).Authorization).toBe(
+        'Bearer secret-token'
+      );
+    } finally {
+      env.TTS_API_KEY = saved;
+    }
   });
 });
