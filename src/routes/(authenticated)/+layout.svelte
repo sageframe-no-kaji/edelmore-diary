@@ -504,6 +504,9 @@ let birdTtsTimings: WordTiming[] = [];
 let birdTtsBoundaryIdx = 0;
 let birdTtsBaseOffset = 0;
 let birdTtsFlipScheduledAt: number | null = null;
+// AbortController for the in-flight /api/speak fetch — lets stopBird()
+// cancel a loading request immediately instead of waiting for the response.
+let birdTtsFetchAbort: AbortController | null = null;
 
 function stopBird() {
   if (typeof window !== 'undefined' && window.speechSynthesis) {
@@ -567,12 +570,14 @@ async function speakFromOffsetViaTts(offset: number) {
   birdAbsoluteIndex = offset;
   birdTtsBaseOffset = offset;
 
+  birdTtsFetchAbort = new AbortController();
   let payload: SpeakResponse;
   try {
     const response = await fetch('/api/speak', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ text: textFromHere, voice: voiceURI, speed: birdRate }),
+      signal: birdTtsFetchAbort.signal,
     });
     if (!response.ok) throw new Error(`TTS HTTP ${response.status}`);
     payload = await response.json();
@@ -580,6 +585,7 @@ async function speakFromOffsetViaTts(offset: number) {
     if (birdPhase === 'loading') birdPhase = 'idle';
     throw e;
   }
+  birdTtsFetchAbort = null;
 
   // Narration may have been cancelled while the fetch was in flight (stopBird,
   // page navigation, rate change). Bail out so we don't start a second stream.
@@ -695,6 +701,9 @@ function cleanupTtsAudio() {
   birdTtsTimings = [];
   birdTtsBoundaryIdx = 0;
   birdTtsFlipScheduledAt = null;
+  // Abort any in-flight fetch so a stale response can't arrive after stopBird.
+  birdTtsFetchAbort?.abort();
+  birdTtsFetchAbort = null;
 }
 
 function speakFromOffsetViaWebSpeech(offset: number) {
@@ -739,7 +748,8 @@ function speakFromOffsetViaWebSpeech(offset: number) {
 
 function speakEntry() {
   if (typeof window === 'undefined') return;
-  if (birdPhase === 'loading') return;
+  // Loading: cancel the in-flight request and stop, same as pressing stop.
+  if (birdPhase === 'loading') { stopBird(); return; }
 
   if (birdPhase === 'playing') {
     if (birdAudioEl) {
