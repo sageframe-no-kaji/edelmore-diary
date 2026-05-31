@@ -42,9 +42,10 @@ export function applySchema(db: Database): void {
       username    TEXT UNIQUE NOT NULL,
       pin_hash    TEXT NOT NULL,
       cover_id    TEXT NOT NULL DEFAULT 'meadow',
-      font_size   REAL NOT NULL DEFAULT 3.4,
-      journal_font TEXT NOT NULL DEFAULT 'eb-garamond',
+      font_size   REAL NOT NULL DEFAULT 4.0,
+      journal_font TEXT NOT NULL DEFAULT 'cedarville-cursive',
       diary_title TEXT NOT NULL DEFAULT 'D I A R Y',
+      voice_uri   TEXT DEFAULT 'bf_emma',
       created_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     );
 
@@ -66,10 +67,10 @@ export function applySchema(db: Database): void {
 
   // Idempotent migrations for columns added after initial release.
   for (const sql of [
-    'ALTER TABLE users ADD COLUMN font_size REAL NOT NULL DEFAULT 3.4',
-    "ALTER TABLE users ADD COLUMN journal_font TEXT NOT NULL DEFAULT 'eb-garamond'",
+    'ALTER TABLE users ADD COLUMN font_size REAL NOT NULL DEFAULT 4.0',
+    "ALTER TABLE users ADD COLUMN journal_font TEXT NOT NULL DEFAULT 'cedarville-cursive'",
     `ALTER TABLE users ADD COLUMN diary_title TEXT NOT NULL DEFAULT 'D I A R Y'`,
-    'ALTER TABLE users ADD COLUMN voice_uri TEXT',
+    "ALTER TABLE users ADD COLUMN voice_uri TEXT DEFAULT 'bf_emma'",
   ]) {
     try {
       db.exec(sql);

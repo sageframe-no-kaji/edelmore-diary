@@ -389,6 +389,10 @@ function onFlipNext() {
   } else if (spreadState.kind === 'toc') {
     if (entryDatePreviews.length > 0) {
       flip('forward', () => navigateTo(entryDatePreviews[0].entry_date));
+    } else {
+      // First use: no entries yet — flip straight to today so there's
+      // somewhere to land and the book doesn't feel broken.
+      flip('forward', () => navigateTo(todayIso()));
     }
   } else if (spreadState.kind === 'entry') {
     if (entryPageSpread < entrySpreadCount - 1) {
@@ -1395,31 +1399,31 @@ $effect(() => {
 					<!-- settings button moved to spell panel ribbon -->
 
 					{#if spreadState.kind === 'settings'}
-						<div class="absolute inset-0 px-8 pt-10 pb-8 overflow-hidden font-serif">
+						<div class="absolute inset-0 px-8 pt-8 pb-6 overflow-hidden font-serif">
 							<div class="flex h-full flex-col">
-								<div class="flex-1 space-y-4">
+								<div class="flex-1 space-y-2">
 									<section>
-										<p class="text-[0.6rem] tracking-[0.22em] uppercase text-stone-400 mb-2">Display Name</p>
-										<input type="text" bind:value={draftUsername} oninput={(e) => { draftUsername = e.currentTarget.value; }} maxlength="40" required class="w-full bg-transparent border-b border-stone-300 text-ink-900 text-base pb-1 outline-none focus:border-stone-500 transition-colors" />
+										<p class="text-[0.6rem] tracking-[0.22em] uppercase text-stone-400 mb-1">Display Name</p>
+										<input type="text" bind:value={draftUsername} oninput={(e) => { draftUsername = e.currentTarget.value; }} maxlength="40" required class="w-full bg-transparent border-b border-stone-300 text-ink-900 text-sm pb-1 outline-none focus:border-stone-500 transition-colors" />
 									</section>
 
 									<section>
-										<p class="text-[0.6rem] tracking-[0.22em] uppercase text-stone-400 mb-2">Diary Title</p>
-										<input type="text" bind:value={draftDiaryTitle} oninput={(e) => { draftDiaryTitle = e.currentTarget.value; }} maxlength="40" required class="w-full bg-transparent border-b border-stone-300 text-ink-900 text-base pb-1 outline-none focus:border-stone-500 transition-colors" />
+										<p class="text-[0.6rem] tracking-[0.22em] uppercase text-stone-400 mb-1">Diary Title</p>
+										<input type="text" bind:value={draftDiaryTitle} oninput={(e) => { draftDiaryTitle = e.currentTarget.value; }} maxlength="40" required class="w-full bg-transparent border-b border-stone-300 text-ink-900 text-sm pb-1 outline-none focus:border-stone-500 transition-colors" />
 									</section>
 
 									<section>
-										<p class="text-[0.6rem] tracking-[0.22em] uppercase text-stone-400 mb-2">Text Size</p>
+										<p class="text-[0.6rem] tracking-[0.22em] uppercase text-stone-400 mb-1">Text Size</p>
 										<div class="flex items-center gap-5">
-												<button type="button" onclick={() => { draftFontSizeCqw = draftPrevFontSizeStep ?? draftFontSizeCqw; }} disabled={draftPrevFontSizeStep === null} class="w-7 h-7 border border-stone-300 text-stone-500 text-lg leading-none hover:border-stone-500 transition-colors disabled:opacity-20 flex items-center justify-center">−</button>
+												<button type="button" onclick={() => { draftFontSizeCqw = draftPrevFontSizeStep ?? draftFontSizeCqw; }} disabled={draftPrevFontSizeStep === null} class="w-6 h-6 border border-stone-300 text-stone-500 text-base leading-none hover:border-stone-500 transition-colors disabled:opacity-20 flex items-center justify-center">−</button>
 											<span class="text-stone-500 text-sm">{FONT_STEPS.indexOf(draftFontSizeCqw) + 1} / {FONT_STEPS.length}</span>
-												<button type="button" onclick={() => { draftFontSizeCqw = draftNextFontSizeStep ?? draftFontSizeCqw; }} disabled={draftNextFontSizeStep === null} class="w-7 h-7 border border-stone-300 text-stone-500 text-lg leading-none hover:border-stone-500 transition-colors disabled:opacity-20 flex items-center justify-center">+</button>
+												<button type="button" onclick={() => { draftFontSizeCqw = draftNextFontSizeStep ?? draftFontSizeCqw; }} disabled={draftNextFontSizeStep === null} class="w-6 h-6 border border-stone-300 text-stone-500 text-base leading-none hover:border-stone-500 transition-colors disabled:opacity-20 flex items-center justify-center">+</button>
 										</div>
 									</section>
 
 									<section>
-										<p class="text-[0.6rem] tracking-[0.22em] uppercase text-stone-400 mb-2">Journal Font</p>
-										<div class="flex flex-col gap-2">
+										<p class="text-[0.6rem] tracking-[0.22em] uppercase text-stone-400 mb-1">Journal Font</p>
+										<div class="flex flex-col gap-1">
 											{#each JOURNAL_FONT_OPTIONS as option}
 												<label class="flex items-center gap-3 text-sm text-stone-500">
 													<input type="radio" bind:group={draftJournalFont} value={option.value} />
@@ -1430,7 +1434,7 @@ $effect(() => {
 									</section>
 
 									<section>
-										<p class="text-[0.6rem] tracking-[0.22em] uppercase text-stone-400 mb-2">Reading Voice</p>
+										<p class="text-[0.6rem] tracking-[0.22em] uppercase text-stone-400 mb-1">Reading Voice</p>
 										{#if kokoroVoiceOptions.length === 0 && browserVoiceOptions.length === 0}
 											<p class="text-[0.7rem] italic text-stone-400">No voices on this device yet.</p>
 										{:else}
@@ -1441,6 +1445,14 @@ $effect(() => {
 															<option value={v.uri}>{v.name}</option>
 														{/each}
 													{:else}
+														{#if draftVoiceURI && isKokoroVoiceUri(draftVoiceURI)}
+															<!-- Kokoro voice is saved but server is offline — show it as a
+															     disabled placeholder so the picker isn't blank. Reading aloud
+															     falls back to Web Speech until Kokoro comes online. -->
+															<option value={draftVoiceURI} disabled>
+																{KOKORO_VOICE_LABELS[draftVoiceURI] ?? draftVoiceURI} (offline)
+															</option>
+														{/if}
 														{#each browserVoiceOptions as v (v.uri)}
 															<option value={v.uri}>{v.name} ({v.lang})</option>
 														{/each}
@@ -1449,20 +1461,20 @@ $effect(() => {
 												<button type="button" onclick={previewVoice} aria-label="Preview voice" class="w-7 h-7 border border-stone-300 text-stone-500 text-sm leading-none hover:border-stone-500 hover:text-ornament-gold transition-colors flex items-center justify-center">▶</button>
 											</div>
 											{#if kokoroOffline}
-												<p class="text-[0.6rem] italic text-stone-400 mt-1">Voice server is offline — only browser voices available.</p>
+												<p class="text-[0.6rem] italic text-stone-400 mt-1">Voice server is offline — browser voices only until it's available.</p>
 											{/if}
 										{/if}
 									</section>
 
 									<section>
 										<p class="text-[0.6rem] tracking-[0.22em] uppercase text-stone-400 mb-1">Change PIN</p>
-										<p class="text-[0.6rem] italic text-stone-400 mb-2">4 digits — no current PIN required</p>
-										<input type="password" bind:value={draftPin} inputmode="numeric" pattern="\d{4}" maxlength="4" placeholder="New PIN" class="mb-2 w-full bg-transparent border-b border-stone-300 text-ink-900 text-sm pb-1 outline-none focus:border-stone-500 transition-colors" />
+										<p class="text-[0.6rem] italic text-stone-400 mb-1">4 digits — no current PIN required</p>
+										<input type="password" bind:value={draftPin} inputmode="numeric" pattern="\d{4}" maxlength="4" placeholder="New PIN" class="mb-1 w-full bg-transparent border-b border-stone-300 text-ink-900 text-sm pb-1 outline-none focus:border-stone-500 transition-colors" />
 										<input type="password" bind:value={draftConfirm} inputmode="numeric" pattern="\d{4}" maxlength="4" placeholder="Confirm PIN" class="w-full bg-transparent border-b border-stone-300 text-ink-900 text-sm pb-1 outline-none focus:border-stone-500 transition-colors" />
 									</section>
 								</div>
 
-								<div class="mt-4 flex items-end justify-end gap-3">
+								<div class="mt-2 flex items-end justify-end gap-3">
 									{#if settingsWarning}
 										<span class="settings-warning-text">{settingsWarningText}</span>
 									{/if}
