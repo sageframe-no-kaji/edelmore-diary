@@ -45,7 +45,7 @@ Edelmore is closest in spirit to Day One but inverts its choices: local rather t
 - **Storage.** SQLite, one file. Three tables: `users`, `entries` (one per user per day), `sessions`.
 - **Page-turn animation.** StPageFlip, wrapped in a Svelte action.
 - **Transcription (optional).** A separate Whisper service on the network, called over HTTP via `/api/transcribe`. Audio captured via the browser's MediaRecorder, posted as webm/opus, returned as text. Not bundled in the image.
-- **Read-aloud (optional).** A separate Kokoro TTS service, called via `/api/speak`, returning audio plus per-word timings for highlight-as-spoken playback. The shim can start the GPU container on demand (Docker remote API) and stop it after an idle timeout. Not bundled in the image.
+- **Read-aloud (optional).** A separate Kokoro TTS service, called via `/api/speak`. The server proxies requests to `/dev/captioned_speech` with `stream=true`, so the first audio chunk arrives in ~2 seconds regardless of entry length; words are highlighted continuously as they're spoken. The shim can unload the GPU model after an idle timeout (via `TTS_UNLOAD_URL` on the [sageframe-no-kaji/Kokoro-FastAPI](https://github.com/sageframe-no-kaji/Kokoro-FastAPI) fork, which reloads lazily on the next request) or stop the container via the Docker remote API. Not bundled in the image.
 - **Network.** Caddy reverse-proxy on the homelab. Tailscale MagicDNS extends the same hostname to phones and tablets outside the house. LAN-only devices (such as a Chromebook without Tailscale) work when at home.
 - **Persistence.** ZFS dataset under the homelab's Sageframe convention. Sanoid snapshots; Syncoid to a backup pool.
 
@@ -64,8 +64,8 @@ Edelmore is closest in spirit to Day One but inverts its choices: local rather t
 
 | | |
 |---|---|
-| **Built** | PIN auth, autosave, cottage-core book skin, page-turn navigation, calendar + TOC, customizable covers, voice transcription, read-aloud narration. |
-| **Packaging** | Multi-stage production Docker image; homelab deploy via the Sageframe pattern. |
+| **Built** | PIN auth, autosave, cottage-core book skin, page-turn navigation, calendar + TOC, customizable covers, voice transcription, streaming read-aloud narration with per-word highlighting. |
+| **Packaging** | Multi-stage production Docker image published to ghcr.io; homelab deploy via the Sageframe pattern. |
 | **Optional** | Whisper transcription and Kokoro read-aloud — external services, not bundled in the image. |
 
 ## Requirements
@@ -78,12 +78,18 @@ Edelmore is closest in spirit to Day One but inverts its choices: local rather t
 ## Installation
 
 ```bash
-git clone <repo> edelmore-diary
+git clone https://github.com/sageframe-no-kaji/edelmore-diary
 cd edelmore-diary
 cp .env.example .env
 # edit .env: DATABASE_URL is required. TRANSCRIPTION_URL (Whisper) and
 # TTS_URL (Kokoro) are optional — leave them blank to run without voice.
 docker compose up -d
+```
+
+A pre-built image for `linux/amd64` is published to GitHub Container Registry on every push to `main`:
+
+```bash
+docker pull ghcr.io/sageframe-no-kaji/edelmore-diary:latest
 ```
 
 There are no seed PINs. On first run against an empty database, visit `/admin` to create users and set their 4-digit PINs. PINs are changed afterward from each user's `/settings` page.
