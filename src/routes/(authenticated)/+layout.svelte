@@ -1333,22 +1333,34 @@ let activeEditor: 'left' | 'right' | null = $state(null);
 // focus from the textarea.
 // biome-ignore lint/style/useConst: reassigned in template event handlers
 let lastActiveEditor: 'left' | 'right' = $state('left');
-let spellsOpen = $state(true);
+let spellRibbonStep = $state<0 | 1 | 2 | 3>(0);
 
-$effect(() => {
-  const stored = localStorage.getItem('edelmore-spells-open');
-  if (stored !== null) spellsOpen = stored === 'true';
-});
+const spellIconsOpen = $derived(spellRibbonStep !== 0);
+const spellHelperOpen = $derived(spellRibbonStep === 2);
+const spellRibbonClass = $derived(
+  spellRibbonStep === 0 ? 'closed' : spellRibbonStep === 2 ? 'helper' : 'icons'
+);
+const spellFlowerLabel = $derived(
+  spellRibbonStep === 0
+    ? 'Open writing tools'
+    : spellRibbonStep === 1
+      ? 'Open magic writing help'
+      : spellRibbonStep === 2
+        ? 'Close magic writing help'
+        : 'Close writing tools'
+);
 
-$effect(() => {
-  localStorage.setItem('edelmore-spells-open', String(spellsOpen));
-});
+function cycleSpellRibbon() {
+  spellRibbonStep = (((spellRibbonStep + 1) % 4) as 0 | 1 | 2 | 3);
+}
 
 const entrySpreadCount = $derived(Math.floor(splitPoints.length / 2) + 1);
 const hasMoreContent = $derived(entryPageSpread < entrySpreadCount - 1);
 
 /* v8 ignore next 18 */
 onMount(() => {
+  spellRibbonStep = 0;
+
   measureEl = document.createElement('textarea');
   measureEl.style.cssText =
     'position:absolute;visibility:hidden;pointer-events:none;overflow:hidden;resize:none;top:-9999px;left:-9999px;';
@@ -1941,41 +1953,40 @@ $effect(() => {
 		</div><!-- /book-shell -->
 		{#if spreadState.kind !== 'cover' && spreadState.kind !== 'backCover'}
 				<div class="spell-anchor">
-					<div class={`spell-panel ${spellsOpen ? 'is-open' : 'is-closed'}`} role="note" aria-label="Magic writing spells">
-						<button
-							type="button"
-							class="spell-flower"
-							onclick={() => { spellsOpen = !spellsOpen; }}
-							aria-label={spellsOpen ? 'Close magic writing spells' : 'Open magic writing spells'}
-							aria-expanded={spellsOpen}
-						>
-							<svg width="16" height="16" viewBox="0 0 36 36" aria-hidden="true">
-								<g opacity="0.82">
-									<ellipse cx="18" cy="8" rx="4" ry="7" fill="#d4b0cc"/>
-									<ellipse cx="18" cy="8" rx="4" ry="7" transform="rotate(45 18 18)" fill="#c9a8c6"/>
-									<ellipse cx="18" cy="8" rx="4" ry="7" transform="rotate(90 18 18)" fill="#d4b0cc"/>
-									<ellipse cx="18" cy="8" rx="4" ry="7" transform="rotate(135 18 18)" fill="#c9a8c6"/>
-									<ellipse cx="18" cy="8" rx="4" ry="7" transform="rotate(180 18 18)" fill="#d4b0cc"/>
-									<ellipse cx="18" cy="8" rx="4" ry="7" transform="rotate(225 18 18)" fill="#c9a8c6"/>
-									<ellipse cx="18" cy="8" rx="4" ry="7" transform="rotate(270 18 18)" fill="#d4b0cc"/>
-									<ellipse cx="18" cy="8" rx="4" ry="7" transform="rotate(315 18 18)" fill="#c9a8c6"/>
-								</g>
-								<circle cx="18" cy="18" r="6" fill="#f5d87a"/>
-								<circle cx="18" cy="18" r="3.5" fill="#e8c63e"/>
-							</svg>
-						</button>
-						<div class="spell-panel-content" aria-hidden={!spellsOpen}>
-							<p class="spell-title">✨ Magic Writing Spells</p>
-							<ul class="spell-list">
-								<li><span class="spell-code">*word*</span> <em>soft and quiet</em></li>
-								<li><span class="spell-code">**word**</span> <strong>strong and loud</strong></li>
-									<li><span class="spell-code">_word_</span> <u>extra important</u></li>
-									<li><span class="spell-code">~word~</span> <s>crossed out</s></li>
-							</ul>
-							<div class="spell-buttons">
-								<div class="spell-quill">
-									<MicQuill oninsert={handleTranscriptionInsert} />
-								</div>
+					<div class={`spell-panel is-${spellRibbonClass}`} role="note" aria-label="Magic writing spells">
+						<div class="spell-icon-row">
+							<button
+								type="button"
+								class="spell-flower"
+								onclick={cycleSpellRibbon}
+								aria-label={spellFlowerLabel}
+								aria-expanded={spellIconsOpen}
+							>
+								<svg width="16" height="16" viewBox="0 0 36 36" aria-hidden="true">
+									<g opacity="0.82">
+										<ellipse cx="18" cy="8" rx="4" ry="7" fill="#d4b0cc"/>
+										<ellipse cx="18" cy="8" rx="4" ry="7" transform="rotate(45 18 18)" fill="#c9a8c6"/>
+										<ellipse cx="18" cy="8" rx="4" ry="7" transform="rotate(90 18 18)" fill="#d4b0cc"/>
+										<ellipse cx="18" cy="8" rx="4" ry="7" transform="rotate(135 18 18)" fill="#c9a8c6"/>
+										<ellipse cx="18" cy="8" rx="4" ry="7" transform="rotate(180 18 18)" fill="#d4b0cc"/>
+										<ellipse cx="18" cy="8" rx="4" ry="7" transform="rotate(225 18 18)" fill="#c9a8c6"/>
+										<ellipse cx="18" cy="8" rx="4" ry="7" transform="rotate(270 18 18)" fill="#d4b0cc"/>
+										<ellipse cx="18" cy="8" rx="4" ry="7" transform="rotate(315 18 18)" fill="#c9a8c6"/>
+									</g>
+									<circle cx="18" cy="18" r="6" fill="#f5d87a"/>
+									<circle cx="18" cy="18" r="3.5" fill="#e8c63e"/>
+								</svg>
+							</button>
+							{#if spellIconsOpen}
+								<button type="button" onclick={() => { void flip('backward', () => { spreadState = { kind: 'toc' }; }); }} class="spell-entries" aria-label="Recent entries">
+									<img src="/entries.svg" style="width: 100%; height: 100%; object-fit: contain" alt="" />
+								</button>
+								<button type="button" onclick={() => { void flip('forward', () => navigateTo(todayIso())); }} class="spell-today" aria-label="Turn to today">
+									<img src="/now.svg" style="width: 100%; height: 100%; object-fit: contain" alt="" />
+								</button>
+								<button type="button" onclick={openSettings} class="spell-settings" aria-label="Settings">
+									<img src="/edelweiss.svg" style="width: 100%; height: 100%; object-fit: contain" alt="" />
+								</button>
 								<div class="spell-bird-cluster">
 									<button type="button" onclick={speakEntry} class="spell-bird" class:is-loading={birdPhase === 'loading'} class:is-playing={birdPhase === 'playing'} class:is-paused={birdPhase === 'paused'} aria-label={birdPhase === 'loading' ? 'Preparing narration…' : birdPhase === 'playing' ? 'Pause' : birdPhase === 'paused' ? 'Resume' : 'Listen'}>
 										<img src="/bird.svg" style="width: 100%; height: 100%; object-fit: contain" alt="" />
@@ -1991,17 +2002,22 @@ $effect(() => {
 										</button>
 									</div>
 								</div>
-								<button type="button" onclick={() => { void flip('backward', () => { spreadState = { kind: 'toc' }; }); }} class="spell-entries" aria-label="Recent entries">
-									<img src="/entries.svg" style="width: 100%; height: 100%; object-fit: contain" alt="" />
-								</button>
-									<button type="button" onclick={() => { void flip('forward', () => navigateTo(todayIso())); }} class="spell-today" aria-label="Turn to today">
-										<img src="/now.svg" style="width: 100%; height: 100%; object-fit: contain" alt="" />
-									</button>
-								<button type="button" onclick={openSettings} class="spell-settings" aria-label="Settings">
-									<img src="/edelweiss.svg" style="width: 100%; height: 100%; object-fit: contain" alt="" />
-								</button>
+								<div class="spell-quill">
+									<MicQuill oninsert={handleTranscriptionInsert} />
+								</div>
+							{/if}
+						</div>
+						{#if spellHelperOpen}
+							<div class="spell-panel-content">
+								<p class="spell-title">✨ Magic Writing Spells</p>
+								<ul class="spell-list">
+									<li><span class="spell-code">*word*</span> <em>soft and quiet</em></li>
+									<li><span class="spell-code">**word**</span> <strong>strong and loud</strong></li>
+									<li><span class="spell-code">_word_</span> <u>extra important</u></li>
+									<li><span class="spell-code">~word~</span> <s>crossed out</s></li>
+								</ul>
 							</div>
-							</div>
+						{/if}
 					</div>
 				</div>
 		{/if}
@@ -2379,57 +2395,67 @@ $effect(() => {
 	}
 
 	.spell-panel {
-		--spell-collapsed-size: 5.2cqi;
-		background: #fefcf7;
-		border: 1px solid #dfc9a4;
-		border-radius: 1.45cqi;
-		padding: 0.6cqi;
+		--spell-icon-size: 5.4cqi;
 		font-family: 'EB Garamond', Georgia, serif;
 		color: #4a3728;
 		display: flex;
-		align-items: center;
-		gap: 1cqi;
-		box-shadow: 0 1px 6px rgba(0, 0, 0, 0.06);
-		max-width: none;
-		height: var(--spell-collapsed-size);
-		width: var(--spell-collapsed-size);
+		flex-direction: column;
+		gap: 0.9cqi;
+		width: fit-content;
 		overflow: visible;
-		transform-origin: left center;
-		transition: width 1s ease, padding 1s ease;
 	}
 
-	.spell-panel.is-open {
+	.spell-panel.is-icons,
+	.spell-panel.is-helper {
 		width: 100%;
-		padding: 0.6cqi 1.4cqi 0.6cqi 0.6cqi;
+	}
+
+	.spell-icon-row {
+		background: #fefcf7;
+		border: 1px solid #dfc9a4;
+		border-radius: 1.45cqi;
+		padding: 0.75cqi;
+		width: fit-content;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		gap: 1.2cqi;
+		box-shadow: 0 1px 6px rgba(0, 0, 0, 0.06);
+		transition: width 0.55s ease, padding 0.55s ease;
+	}
+
+	.spell-panel.is-icons .spell-icon-row,
+	.spell-panel.is-helper .spell-icon-row {
+		width: 100%;
+		justify-content: space-between;
+		padding: 0.75cqi 2.2cqi;
 	}
 
 	.spell-panel-content {
 		display: flex;
 		align-items: center;
+		justify-content: center;
 		width: 100%;
-		flex: 1 1 auto;
-		gap: 1cqi;
-		min-width: 0;
-		overflow: visible;
-		opacity: 0;
-		transform: translateX(-0.5rem);
-		pointer-events: none;
-		/* Closing transition: fade out fast and immediately, so the content
-		   is gone before the panel finishes shrinking — otherwise the panel
-		   is small but the spell-list text is still visible "ghosted" outside
-		   the panel's box (panel has overflow:visible so the tooltip can
-		   render below). The opening transition is overridden by the
-		   .is-open rule below with a delay so the text appears after the
-		   panel has grown. */
-		transition: opacity 0.25s ease 0s, transform 0.25s ease 0s;
+		background: #fefcf7;
+		border: 1px solid #dfc9a4;
+		border-radius: 1.25cqi;
+		overflow: hidden;
+		animation: spell-ribbon-open 0.7s ease both;
 	}
 
-	.spell-panel.is-open .spell-panel-content {
-		opacity: 1;
-		transform: translateX(0);
-		pointer-events: auto;
-		/* Opening: delay until the panel has mostly grown, then fade in. */
-		transition: opacity 0.45s ease 0.45s, transform 0.45s ease 0.45s;
+	.spell-panel.is-helper .spell-panel-content {
+		padding: 0.75cqi 1.4cqi;
+	}
+
+	@keyframes spell-ribbon-open {
+		from {
+			opacity: 0;
+			transform: translateY(-0.45rem);
+		}
+		to {
+			opacity: 1;
+			transform: translateY(0);
+		}
 	}
 
 	.spell-title {
@@ -2448,9 +2474,11 @@ $effect(() => {
 		display: flex;
 		flex-direction: row;
 		flex-wrap: nowrap;
-		gap: 1.0cqi;
+		justify-content: center;
+		gap: 1.8cqi;
 		font-size: 1.42cqi;
 		white-space: nowrap;
+		width: 100%;
 	}
 
 	.spell-list li {
@@ -2466,14 +2494,6 @@ $effect(() => {
 		background: rgba(139, 105, 20, 0.08);
 		padding: 0 0.4cqi;
 		border-radius: 2px;
-	}
-
-	.spell-buttons {
-		margin-left: auto;
-		flex-shrink: 0;
-		display: flex;
-		align-items: center;
-		gap: 0.4cqi;
 	}
 
 	.spell-page-nav {
@@ -2504,16 +2524,16 @@ $effect(() => {
 		display: flex;
 		align-items: center;
 		justify-content: center;
-		width: 3.6cqi;
-		height: 3.6cqi;
+		width: var(--spell-icon-size);
+		height: var(--spell-icon-size);
 	}
 
 	/* MicQuill wrapper — sized to match the existing ribbon buttons. The
 	   component itself is layout-agnostic; this wrapper provides the slot. */
 	.spell-quill {
 		position: relative;
-		width: 3.6cqi;
-		height: 3.6cqi;
+		width: var(--spell-icon-size);
+		height: var(--spell-icon-size);
 		flex-shrink: 0;
 		display: flex;
 		align-items: center;
@@ -2565,9 +2585,9 @@ $effect(() => {
 
 	.spell-bird-note {
 		position: absolute;
-		top: 0.2cqi;
-		right: 0.2cqi;
-		font-size: 1.6cqi;
+		top: 0.6cqi;
+		right: 0.6cqi;
+		font-size: 3.2cqi;
 		line-height: 1;
 		color: #c8362d;
 		opacity: 0;
@@ -2599,8 +2619,8 @@ $effect(() => {
 	   it doesn't change the ribbon's layout. */
 	.spell-bird-cluster {
 		position: relative;
-		width: 3.6cqi;
-		height: 3.6cqi;
+		width: var(--spell-icon-size);
+		height: var(--spell-icon-size);
 		flex-shrink: 0;
 	}
 	.spell-bird-cluster .spell-bird {
@@ -2684,15 +2704,12 @@ $effect(() => {
 	}
 
 	/* ── Ribbon tooltips ─────────────────────────────────────────────────── */
-	.spell-panel.is-closed .spell-flower::after { content: "open"; }
-	.spell-panel.is-open  .spell-flower::after  { content: "close"; }
 	.spell-quill::after    { content: "speak"; }
 	.spell-bird::after     { content: "listen"; }
 	.spell-today::after    { content: "today"; }
 	.spell-entries::after  { content: "recent entries"; }
 	.spell-settings::after { content: "settings"; }
 
-	.spell-flower::after,
 	.spell-quill::after,
 	.spell-bird::after,
 	.spell-today::after,
@@ -2716,8 +2733,6 @@ $effect(() => {
 		z-index: 40;
 	}
 
-	.spell-flower:hover::after,
-	.spell-flower:focus-visible::after,
 	.spell-quill:hover::after,
 	.spell-quill:focus-within::after,
 	.spell-bird:hover::after,
@@ -2736,6 +2751,7 @@ $effect(() => {
 		/* spell-anchor uses cqi units; book-frame is its container since AT-01
 		   moved spell-anchor out of book-shell. */
 		container-type: inline-size;
+		transform: translateY(-2.4rem);
 	}
 
 	/* Leather edge is on a pseudo so we can fade it (image backgrounds can't
@@ -2924,8 +2940,8 @@ $effect(() => {
 		display: flex;
 		align-items: center;
 		justify-content: center;
-		width: 3.6cqi;
-		height: 3.6cqi;
+		width: var(--spell-icon-size);
+		height: var(--spell-icon-size);
 		flex-shrink: 0;
 	}
 
