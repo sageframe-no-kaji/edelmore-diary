@@ -1579,6 +1579,7 @@ $effect(() => {
 				{spreadCount}
 				{prevZonePct}
 				{nextZonePct}
+				nextZoneTopDeadPct={spreadState.kind === 'entry' ? 33.333 : 0}
 				overhangRem={flipOverhangRem}
 				hideLeftPage={spreadState.kind === 'cover'}
 				hideRightPage={spreadState.kind === 'backCover'}
@@ -1818,9 +1819,6 @@ $effect(() => {
 					{:else if spreadState.kind === 'entry'}
 						{@const rightStart = splitPoints[entryPageSpread * 2]}
 						{@const rightEnd = splitPoints[entryPageSpread * 2 + 1]}
-						<div class="page-mic-quill">
-							<MicQuill oninsert={handleTranscriptionInsert} />
-						</div>
 						{#if rightStart !== undefined}
 							{#if birdPlaying}
 								<div
@@ -1933,6 +1931,11 @@ $effect(() => {
 					{/if}
 				{/snippet}
 			</Spread>
+				{#if spreadState.kind === 'entry'}
+					<div class="page-mic-quill">
+						<MicQuill oninsert={handleTranscriptionInsert} />
+					</div>
+				{/if}
 				<div class="shell-seam" aria-hidden="true"></div>
 				</div><!-- /book-shell-inner -->
 		</div><!-- /book-shell -->
@@ -2530,14 +2533,25 @@ $effect(() => {
 
 	.page-mic-quill {
 		position: absolute;
-		top: 1.2cqi;
-		right: 1.5cqi;
-		z-index: 20;
-		width: 10.8cqi;
-		height: 10.8cqi;
-		display: flex;
-		align-items: center;
-		justify-content: center;
+		top: -10cqi;
+		right: -14cqi;
+		z-index: 35;
+		width: 28cqi;
+		height: 22cqi;
+	}
+
+	.page-mic-quill :global(.mic-quill) {
+		position: relative;
+		width: 100%;
+		height: 100%;
+	}
+
+	.page-mic-quill :global(.quill-svg) {
+		position: absolute;
+		left: 7.8cqi;
+		top: 10.3cqi;
+		width: 5.4cqi;
+		height: 5.4cqi;
 	}
 
 	.spell-settings:hover,

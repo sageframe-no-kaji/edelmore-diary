@@ -11,6 +11,8 @@ type Props = {
   // 0 = no zone rendered.
   prevZonePct?: number;
   nextZonePct?: number;
+  // Top slice of the next-page click zone that should not turn the page.
+  nextZoneTopDeadPct?: number;
   // Extra reach of the flip zones outside the page edge into the gutter (rem).
   overhangRem?: number;
   // When true the left page is invisible but still occupies its layout space,
@@ -35,6 +37,7 @@ const {
   spreadCount = 0,
   prevZonePct = 0,
   nextZonePct = 0,
+  nextZoneTopDeadPct = 0,
   overhangRem = 0,
   hideLeftPage = false,
   hideRightPage = false,
@@ -74,7 +77,7 @@ const {
 			<button
 				type="button"
 				class="flip-zone flip-zone-next"
-				style="right: -{overhangRem}rem; width: calc({overhangRem}rem + {nextZonePct}%)"
+				style="right: -{overhangRem}rem; width: calc({overhangRem}rem + {nextZonePct}%); top: {nextZoneTopDeadPct}%; height: {100 - nextZoneTopDeadPct}%"
 				aria-label="Next page"
 				disabled={!canFlipNext}
 				onclick={onFlipNext}

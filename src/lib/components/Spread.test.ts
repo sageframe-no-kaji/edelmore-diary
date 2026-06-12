@@ -24,6 +24,13 @@ describe('Spread click zones', () => {
     expect(screen.getByRole('button', { name: 'Next page' })).toBeTruthy();
   });
 
+  it('can leave a top dead-zone on the next-page click target', () => {
+    render(Spread, { props: { ...baseProps, nextZonePct: 50, nextZoneTopDeadPct: 33.333 } });
+    const next = screen.getByRole('button', { name: 'Next page' });
+    expect(next.getAttribute('style')).toContain('top: 33.333%');
+    expect(next.getAttribute('style')).toContain('height: 66.667%');
+  });
+
   it('calls onFlipPrev immediately when prev zone is clicked', async () => {
     const onFlipPrev = vi.fn();
     render(Spread, { props: { ...baseProps, onFlipPrev, prevZonePct: 50 } });
