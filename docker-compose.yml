@@ -2,6 +2,12 @@ services:
   edelmore:
     build: .
     restart: unless-stopped
+    # Docker's tini forwards SIGTERM to node (adapter-node shuts down
+    # gracefully on it); without init, node ignored the signal and every
+    # docker stop / image update escalated to SIGKILL — potentially
+    # mid-SQLite-write. The grace period gives in-flight saves time.
+    init: true
+    stop_grace_period: 30s
     # Loads .env into the container (cp .env.example .env first). Only
     # DATABASE_URL is required; the transcription (Whisper) and narration
     # (Kokoro TTS) vars are optional — leave them blank in .env to run without
