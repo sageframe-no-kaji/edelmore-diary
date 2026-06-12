@@ -31,6 +31,15 @@ describe('POST /api/entries', () => {
     expect(getEntry(db, userId, '2026-05-14')?.content).toBe('Hello.');
   });
 
+  it('returns 401 when unauthenticated', async () => {
+    const event = {
+      request: { json: async () => ({ date: '2026-05-14', content: 'Hello.' }) },
+      locals: { db, user: undefined },
+    };
+    await expect(POST(event as any)).rejects.toMatchObject({ status: 401 });
+    expect(getEntry(db, userId, '2026-05-14')).toBeUndefined();
+  });
+
   it('returns 400 for invalid date', async () => {
     await expect(
       POST(makeEvent(db, userId, { date: 'bad-date', content: 'Hello.' }) as any)

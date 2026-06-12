@@ -4,6 +4,9 @@ import { error, json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 
 export const POST: RequestHandler = async ({ request, locals }) => {
+  // API routes are not under the (authenticated) layout group — guard here.
+  if (!locals.user) error(401, 'Unauthorized');
+
   const body = await request.json();
   const { date, content } = body as { date: unknown; content: unknown };
 
@@ -14,7 +17,6 @@ export const POST: RequestHandler = async ({ request, locals }) => {
     error(400, 'Content must be a string');
   }
 
-  // biome-ignore lint/style/noNonNullAssertion: layout guard guarantees user is present
-  upsertEntry(locals.db, locals.user!.id, date, content);
+  upsertEntry(locals.db, locals.user.id, date, content);
   return json({ ok: true });
 };
