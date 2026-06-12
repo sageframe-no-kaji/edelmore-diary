@@ -13,6 +13,28 @@ const { data, form }: { data: PageData; form: ActionData } = $props();
 			</p>
 		</div>
 
+		{#if !data.authorized}
+			<form method="POST" action="?/unlock" class="space-y-4">
+				<p class="font-serif text-sm text-cream-700">Enter the admin PIN to manage accounts.</p>
+				<input
+					type="password"
+					name="admin_pin"
+					inputmode="numeric"
+					maxlength="8"
+					autocomplete="off"
+					class="w-full rounded-sm border border-cream-300 bg-cream-50 px-3 py-2 text-center font-mono text-xl tracking-widest text-ink-900 focus:border-ornament-gold focus:outline-none"
+				/>
+				{#if form?.error}
+					<p class="font-serif text-xs text-red-600">{form.error}</p>
+				{/if}
+				<button
+					type="submit"
+					class="w-full rounded-sm border border-ornament-gold bg-ornament-gold px-4 py-2 font-serif text-sm text-cream-50 hover:bg-ornament-gold/90"
+				>
+					Unlock
+				</button>
+			</form>
+		{:else}
 		{#if data.users.length > 0}
 			<ul class="space-y-2">
 				{#each data.users as user}
@@ -23,7 +45,7 @@ const { data, form }: { data: PageData; form: ActionData } = $props();
 			<p class="font-serif text-sm text-cream-500">No accounts yet.</p>
 		{/if}
 
-		<form method="POST" class="space-y-4 pt-2 border-t border-cream-200">
+		<form method="POST" action="?/create" class="space-y-4 pt-2 border-t border-cream-200">
 			<p class="font-serif text-sm text-cream-700">Add a new account</p>
 
 			<div class="space-y-2">
@@ -65,5 +87,6 @@ const { data, form }: { data: PageData; form: ActionData } = $props();
 				Create account
 			</button>
 		</form>
+		{/if}
 	</div>
 </div>
