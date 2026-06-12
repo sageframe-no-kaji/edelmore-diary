@@ -5,7 +5,13 @@ pre-commit:
       glob: "*.{js,ts,json}"
       run: npx biome check --write {staged_files}
       stage_fixed: true
+    # Whole-repo lint — the staged-files job above autofixes but a lint
+    # error in an unstaged file must still block the commit.
+    lint:
+      run: npm run lint
     svelte-check:
       run: npx svelte-kit sync && npx svelte-check --tsconfig ./tsconfig.json
+    # test:coverage enforces the 95%-lines floor; plain `npm run test`
+    # silently skipped it.
     test:
-      run: npm run test
+      run: npm run test:coverage
