@@ -7,7 +7,7 @@ type Props = {
   ariaLabel?: string;
 };
 
-const { oninsert }: Props = $props();
+const { oninsert, ariaLabel }: Props = $props();
 
 let phase: State = $state('idle');
 let errorMessage = $state('');
@@ -19,6 +19,8 @@ let recordingStart = 0;
 let elapsedTimer: ReturnType<typeof setInterval> | null = null;
 let holdTimer: ReturnType<typeof setTimeout> | null = null;
 let cancelled = false;
+// Swallows the synthetic click that follows a hold-to-cancel release.
+let suppressClick = false;
 
 const MAX_SECONDS = 90;
 const HOLD_CANCEL_MS = 800;
@@ -45,9 +47,10 @@ function showError(message: string) {
 async function start() {
   cancelled = false;
   chunks = [];
-  /* v8 ignore next 18 */
+  /* v8 ignore next 22 */
+  let stream: MediaStream | null = null;
   try {
-    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    stream = await navigator.mediaDevices.getUserMedia({ audio: true });
     mediaRecorder = new MediaRecorder(stream);
     mediaRecorder.addEventListener('dataavailable', (e) => {
       if (e.data.size > 0) chunks.push(e.data);
@@ -63,6 +66,9 @@ async function start() {
     }, 250);
     phase = 'recording';
   } catch (e) {
+    // Release the mic if acquisition succeeded but recorder setup threw —
+    // otherwise the OS recording indicator stays hot until page unload.
+    if (stream) for (const t of stream.getTracks()) t.stop();
     console.warn('Microphone access failed:', e instanceof Error ? e.message : e);
     showError('Microphone access is off. Turn it on in browser settings.');
   }
@@ -151,6 +157,10 @@ function onPointerDown() {
   if (phase !== 'recording') return;
   holdTimer = setTimeout(() => {
     cancelled = true;
+    // The finger release after a hold-cancel still fires a synthetic click;
+    // if it lands after phase returns to 'idle', onClick would immediately
+    // start a NEW recording the user just cancelled. Swallow that click.
+    suppressClick = true;
     void stopAndProcess();
     holdTimer = null;
   }, HOLD_CANCEL_MS);
@@ -164,6 +174,10 @@ function onPointerUp() {
 }
 
 function onClick() {
+  if (suppressClick) {
+    suppressClick = false;
+    return;
+  }
   if (phase === 'idle') void start();
   else if (phase === 'recording') void stopAndProcess();
 }
@@ -183,7 +197,7 @@ const showCountdown = $derived((phase as State) === 'recording' && remaining <= 
   onpointerup={onPointerUp}
   onpointerleave={onPointerUp}
   aria-label={phase === 'idle'
-    ? 'Start voice writing'
+    ? (ariaLabel ?? 'Start voice writing')
     : phase === 'recording'
       ? 'Stop voice writing (hold to cancel)'
       : phase === 'processing'
