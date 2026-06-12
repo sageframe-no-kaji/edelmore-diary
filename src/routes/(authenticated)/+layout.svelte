@@ -11,6 +11,7 @@ import Spread from '$lib/components/Spread.svelte';
 import TocPage from '$lib/components/TocPage.svelte';
 import { findCover } from '$lib/covers.js';
 import { insertAtCursor } from '$lib/cursor.js';
+import { applyPageEdit } from '$lib/content.js';
 import { todayIso } from '$lib/dates.js';
 import type { EntryDatePreview } from '$lib/db.js';
 import {
@@ -1325,6 +1326,13 @@ let textareaEl: HTMLTextAreaElement | null = $state(null);
 let rightTextareaEl: HTMLTextAreaElement | null = $state(null);
 let measureEl: HTMLTextAreaElement | null = null;
 let pendingCursorRestore: { absPos: number; side: 'left' | 'right' } | null = null;
+// What each page's textarea currently holds, kept in lockstep with the textarea
+// (set on focus, on projection, and after each edit). applyPageEdit derives the
+// page-window end from this prior value rather than from splitPoints, which lags
+// content by the pagination debounce — using the stale split point re-appended a
+// duplicate suffix and corrupted a real entry on 2026-06-12.
+let lastLeftValue = '';
+let lastRightValue = '';
 // biome-ignore lint/style/useConst: reassigned in template event handlers — Biome doesn't see those
 let activeEditor: 'left' | 'right' | null = $state(null);
 // Sticky version of activeEditor — set on focus, NOT cleared on blur.
@@ -1530,6 +1538,7 @@ $effect(() => {
       const ls = spread === 0 ? 0 : (sp[spread * 2 - 1] ?? 0);
       const le = sp[spread * 2];
       textareaEl.value = c.slice(ls, le);
+      lastLeftValue = textareaEl.value;
       if (restore?.side === 'left') {
         const localPos = Math.max(0, Math.min(restore.absPos - ls, textareaEl.value.length));
         textareaEl.focus();
@@ -1540,6 +1549,7 @@ $effect(() => {
       const rs = sp[spread * 2];
       const re = sp[spread * 2 + 1];
       rightTextareaEl.value = c.slice(rs, re);
+      lastRightValue = rightTextareaEl.value;
       if (restore?.side === 'right') {
         const localPos = Math.max(0, Math.min(restore.absPos - rs, rightTextareaEl.value.length));
         rightTextareaEl.focus();
@@ -1667,7 +1677,7 @@ $effect(() => {
 								{/if}
 								<textarea
 									bind:this={textareaEl}
-									onfocus={() => { activeEditor = 'left'; lastActiveEditor = 'left'; }}
+									onfocus={(e) => { activeEditor = 'left'; lastActiveEditor = 'left'; lastLeftValue = e.currentTarget.value; }}
 									onblur={() => { activeEditor = null; }}
 									onkeydown={(e) => {
 										const ta = e.currentTarget;
@@ -1720,10 +1730,10 @@ $effect(() => {
 										}
 									}}
 									oninput={(e) => {
-										const leftEnd = splitPoints[entryPageSpread * 2];
-										pendingCursorRestore = { absPos: leftStart + e.currentTarget.selectionStart, side: 'left' };
-										const suffix = leftEnd !== undefined ? content.slice(leftEnd) : '';
-										content = content.slice(0, leftStart) + e.currentTarget.value + suffix;
+										const ta = e.currentTarget;
+										pendingCursorRestore = { absPos: leftStart + ta.selectionStart, side: 'left' };
+										content = applyPageEdit(content, leftStart, lastLeftValue, ta.value);
+										lastLeftValue = ta.value;
 									}}
 									class={`absolute inset-0 h-full w-full resize-none overflow-hidden px-8 pt-12 pb-8 bg-transparent leading-relaxed outline-none relative ${activeEditor === 'left' ? 'text-ink-900 caret-ink-900' : 'text-transparent caret-transparent'}`}
 									style={`font-size: var(--page-font-size); font-family: ${journalFontFamily}`}
@@ -1854,7 +1864,7 @@ $effect(() => {
 								{/if}
 								<textarea
 									bind:this={rightTextareaEl}
-									onfocus={() => { activeEditor = 'right'; lastActiveEditor = 'right'; }}
+									onfocus={(e) => { activeEditor = 'right'; lastActiveEditor = 'right'; lastRightValue = e.currentTarget.value; }}
 									onblur={() => { activeEditor = null; }}
 									onkeydown={(e) => {
 										const ta = e.currentTarget;
@@ -1900,10 +1910,10 @@ $effect(() => {
 										}
 									}}
 									oninput={(e) => {
-										const rightEnd = splitPoints[entryPageSpread * 2 + 1];
-										pendingCursorRestore = { absPos: rightStart + e.currentTarget.selectionStart, side: 'right' };
-										const suffix = rightEnd !== undefined ? content.slice(rightEnd) : '';
-										content = content.slice(0, rightStart) + e.currentTarget.value + suffix;
+										const ta = e.currentTarget;
+										pendingCursorRestore = { absPos: rightStart + ta.selectionStart, side: 'right' };
+										content = applyPageEdit(content, rightStart, lastRightValue, ta.value);
+										lastRightValue = ta.value;
 									}}
 									class={`absolute inset-0 h-full w-full resize-none overflow-hidden px-8 pt-12 pb-8 bg-transparent leading-relaxed outline-none relative ${activeEditor === 'right' ? 'text-ink-900 caret-ink-900' : 'text-transparent caret-transparent'}`}
 									style={`font-size: var(--page-font-size); font-family: ${journalFontFamily}`}
