@@ -83,6 +83,8 @@ cd edelmore-diary
 cp .env.example .env
 # edit .env: DATABASE_URL is required. TRANSCRIPTION_URL (Whisper) and
 # TTS_URL (Kokoro) are optional — leave them blank to run without voice.
+# Set TZ to your household's timezone, and set ADMIN_PIN to lock the
+# /admin accounts page once first-run setup is done.
 docker compose up -d
 ```
 
@@ -92,7 +94,9 @@ A pre-built image for `linux/amd64` is published to GitHub Container Registry on
 docker pull ghcr.io/sageframe-no-kaji/edelmore-diary:latest
 ```
 
-There are no seed PINs. On first run against an empty database, visit `/admin` to create users and set their 4-digit PINs. PINs are changed afterward from each user's `/settings` page.
+There are no seed PINs. On first run against an empty database, visit `/admin` to create users and set their 4-digit PINs. PINs are changed afterward from each user's `/settings` page. The `/admin` page itself is gated by `ADMIN_PIN` (in `.env`) — leave it unset only during first-run setup.
+
+Serve the diary through TLS (Caddy with an internal CA in the homelab pattern). Production builds mark the session cookie `Secure`, so browsers will drop it over plain `http://host:3000` and login will silently loop.
 
 ## Development
 
@@ -110,4 +114,4 @@ MIT.
 
 ---
 
-*Edelmore is part of [atmarcus.net](https://atmarcus.net). Built for Iona.*
+*Edelmore is part of [Sageframe](https://sageframe.net). Built for Iona, Ada, and Isla.*

@@ -1,4 +1,5 @@
 <script lang="ts">
 </script>
 
-<!-- Load function always redirects to today; this component never renders. -->
+<!-- The book (cover spread) is rendered by the authenticated layout; this
+     page only supplies the TOC preview data via its load function. -->

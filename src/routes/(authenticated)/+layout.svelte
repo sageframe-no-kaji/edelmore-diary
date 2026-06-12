@@ -1,4 +1,5 @@
 <script lang="ts">
+import { deserialize } from '$app/forms';
 import { goto, invalidateAll } from '$app/navigation';
 import { page } from '$app/stores';
 import CalendarModal from '$lib/components/CalendarModal.svelte';
@@ -1420,25 +1421,22 @@ async function saveSettings() {
     body: formData,
   });
   savingSettings = false;
-  // SvelteKit form actions always return HTTP 200; success/failure is in the JSON body.
-  let result: { type?: string; data?: string } | null = null;
+  // SvelteKit form actions always return HTTP 200; success/failure is in the
+  // body. deserialize() is the framework's own decoder for that payload —
+  // sturdier than hand-parsing the devalue encoding.
+  let result: ReturnType<typeof deserialize> | null = null;
   try {
-    result = await response.json();
+    result = deserialize(await response.text());
   } catch {
-    /* non-JSON — treat as failure */
+    /* malformed — treat as failure */
   }
   if (result?.type !== 'success') {
     let errorMessage = 'Could not save settings. Please try again.';
     if (result?.type === 'redirect') {
       errorMessage = 'Session expired. Please reload the page.';
-    } else if (typeof result?.data === 'string') {
-      try {
-        // SvelteKit encodes fail() data as devalue: [{key: index}, ...values]
-        const parts: unknown[] = JSON.parse(result.data);
-        if (Array.isArray(parts) && typeof parts[1] === 'string') errorMessage = parts[1];
-      } catch {
-        // keep fallback message
-      }
+    } else if (result?.type === 'failure') {
+      const failData = result.data as { error?: unknown } | undefined;
+      if (typeof failData?.error === 'string') errorMessage = failData.error;
     }
     settingsWarning = true;
     settingsWarningText = errorMessage;

@@ -167,6 +167,12 @@ export function deleteSession(db: Database, id: string): void {
   db.prepare('DELETE FROM sessions WHERE id = ?').run(id);
 }
 
+// Housekeeping: expired sessions are useless rows that otherwise accumulate
+// forever. Called once at server startup.
+export function deleteExpiredSessions(db: Database): void {
+  db.prepare("DELETE FROM sessions WHERE expires_at <= datetime('now')").run();
+}
+
 export function getEntry(db: Database, userId: number, entryDate: string): Entry | undefined {
   return db
     .prepare('SELECT * FROM entries WHERE user_id = ? AND entry_date = ?')

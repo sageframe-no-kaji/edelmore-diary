@@ -6,6 +6,7 @@ import {
   createDb,
   createSession,
   createUser,
+  deleteExpiredSessions,
   deleteSession,
   getEntry,
   getSession,
@@ -49,6 +50,16 @@ describe('createDb / applySchema', () => {
   it('sets busy_timeout so concurrent access waits instead of failing', () => {
     const db = freshDb();
     expect(db.pragma('busy_timeout', { simple: true })).toBe(5000);
+  });
+
+  it('deleteExpiredSessions removes only expired rows', () => {
+    const db = freshDb();
+    const userId = createUser(db, 'Iona', 'hash');
+    createSession(db, 'expired', userId, '2000-01-01 00:00:00');
+    createSession(db, 'live', userId, '2099-01-01 00:00:00');
+    deleteExpiredSessions(db);
+    const ids = (db.prepare('SELECT id FROM sessions').all() as { id: string }[]).map((r) => r.id);
+    expect(ids).toEqual(['live']);
   });
 
   it('requests WAL journal mode (file-backed dbs honor it)', () => {
