@@ -91,6 +91,25 @@ describe('actions.default', () => {
     expect(result?.status).toBe(400);
   });
 
+  it('locks the username out after 5 straight PIN failures', async () => {
+    // Unique username — the throttle is module-level state shared by this file.
+    createUser(db, 'Lockey', await hashPin('1234'));
+    const attempt = (pin: string) =>
+      actions.default({
+        request: { formData: async () => makeFormData({ username: 'Lockey', pin }) },
+        cookies: makeCookies(cookieStore),
+        locals: { db },
+      } as any);
+
+    for (let i = 0; i < 5; i++) {
+      const result = await attempt('0000');
+      expect(result?.status).toBe(400);
+    }
+    // Sixth attempt is throttled — even with the CORRECT pin.
+    const locked = await attempt('1234');
+    expect(locked?.status).toBe(429);
+  });
+
   it('redirects to / and sets session cookie on valid credentials', async () => {
     await expect(
       actions.default({

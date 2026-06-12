@@ -6,8 +6,13 @@ import {
   verifyPin,
 } from '$lib/auth.js';
 import { createSession, getUserByUsername, listUsers } from '$lib/db.js';
+import { createThrottle } from '$lib/throttle.js';
 import { fail, redirect } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
+
+// 5 straight PIN failures per username → 60s lockout. Without this a
+// 4-digit PIN is brute-forceable in minutes, and PIN is the sibling gate.
+const loginThrottle = createThrottle();
 
 export const load: PageServerLoad = async ({ locals }) => {
   if (locals.user) redirect(302, '/');
@@ -24,10 +29,16 @@ export const actions: Actions = {
       return fail(400, { error: 'Invalid credentials' });
     }
 
+    if (loginThrottle.isLocked(username)) {
+      return fail(429, { error: 'Too many tries — wait a minute, then try again' });
+    }
+
     const user = getUserByUsername(locals.db, username);
     if (!user || !(await verifyPin(pin, user.pin_hash))) {
+      loginThrottle.recordFailure(username);
       return fail(400, { error: 'Invalid credentials' });
     }
+    loginThrottle.recordSuccess(username);
 
     const sessionId = createSessionId();
     const expiry = sessionExpiry();
