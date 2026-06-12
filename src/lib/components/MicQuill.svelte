@@ -1,26 +1,21 @@
-<script lang="ts">
+<script module lang="ts">
+import { get, writable } from 'svelte/store';
+
 type State = 'idle' | 'recording' | 'processing' | 'error';
 
-type Props = {
-  oninsert: (text: string) => void;
-  /** Optional aria-label override. */
-  ariaLabel?: string;
-};
-
-const { oninsert, ariaLabel }: Props = $props();
-
-let phase: State = $state('idle');
-let errorMessage = $state('');
-let elapsed = $state(0);
+const micState = writable<{ phase: State; errorMessage: string; elapsed: number }>({
+  phase: 'idle',
+  errorMessage: '',
+  elapsed: 0,
+});
 
 let mediaRecorder: MediaRecorder | null = null;
 let chunks: Blob[] = [];
 let recordingStart = 0;
 let elapsedTimer: ReturnType<typeof setInterval> | null = null;
-let holdTimer: ReturnType<typeof setTimeout> | null = null;
 let cancelled = false;
-// Swallows the synthetic click that follows a hold-to-cancel release.
-let suppressClick = false;
+let starting = false;
+let activeInsert: ((text: string) => void) | null = null;
 
 const MAX_SECONDS = 90;
 const HOLD_CANCEL_MS = 800;
@@ -34,17 +29,18 @@ function clearElapsedTimer() {
 }
 
 function showError(message: string) {
-  errorMessage = message;
-  phase = 'error';
+  micState.set({ phase: 'error', errorMessage: message, elapsed: get(micState).elapsed });
   setTimeout(() => {
-    if (phase === 'error') {
-      phase = 'idle';
-      errorMessage = '';
+    if (get(micState).phase === 'error') {
+      micState.set({ phase: 'idle', errorMessage: '', elapsed: 0 });
     }
   }, ERROR_DISPLAY_MS);
 }
 
-async function start() {
+async function start(insert: (text: string) => void) {
+  if (starting || get(micState).phase !== 'idle') return;
+  starting = true;
+  activeInsert = insert;
   cancelled = false;
   chunks = [];
   /* v8 ignore next 22 */
@@ -59,18 +55,20 @@ async function start() {
     // if the 'stop' event is delayed or never fires.
     mediaRecorder.start(500);
     recordingStart = Date.now();
-    elapsed = 0;
+    micState.set({ phase: 'recording', errorMessage: '', elapsed: 0 });
     elapsedTimer = setInterval(() => {
-      elapsed = Math.floor((Date.now() - recordingStart) / 1000);
+      const elapsed = Math.floor((Date.now() - recordingStart) / 1000);
+      micState.update((state) => ({ ...state, elapsed }));
       if (elapsed >= MAX_SECONDS) void stopAndProcess();
     }, 250);
-    phase = 'recording';
   } catch (e) {
     // Release the mic if acquisition succeeded but recorder setup threw —
     // otherwise the OS recording indicator stays hot until page unload.
     if (stream) for (const t of stream.getTracks()) t.stop();
     console.warn('Microphone access failed:', e instanceof Error ? e.message : e);
     showError('Microphone access is off. Turn it on in browser settings.');
+  } finally {
+    starting = false;
   }
 }
 
@@ -82,7 +80,7 @@ async function stopAndProcess() {
   // Show the spinner immediately so the user sees feedback regardless of
   // when (or whether) the 'stop' event fires. Safari's MediaRecorder has
   // been observed to delay or skip the 'stop' event entirely.
-  phase = 'processing';
+  micState.update((state) => ({ ...state, phase: 'processing' }));
 
   // Promise that resolves when the recorder fires 'stop'. Fallback after
   // 800ms — Safari quirk.
@@ -108,7 +106,7 @@ async function stopAndProcess() {
   for (const t of tracks) t.stop();
 
   if (cancelled) {
-    phase = 'idle';
+    micState.set({ phase: 'idle', errorMessage: '', elapsed: 0 });
     chunks = [];
     return;
   }
@@ -142,8 +140,8 @@ async function stopAndProcess() {
     }
     const data = await response.json();
     if (typeof data?.text === 'string' && data.text.length > 0) {
-      oninsert(data.text);
-      phase = 'idle';
+      activeInsert?.(data.text);
+      micState.set({ phase: 'idle', errorMessage: '', elapsed: 0 });
     } else {
       showError("Didn't catch any words. Try speaking again.");
     }
@@ -152,9 +150,23 @@ async function stopAndProcess() {
     showError("Couldn't reach the diary. Try again in a moment.");
   }
 }
+</script>
+
+<script lang="ts">
+type Props = {
+  oninsert: (text: string) => void;
+  /** Optional aria-label override. */
+  ariaLabel?: string;
+};
+
+const { oninsert, ariaLabel }: Props = $props();
+
+let holdTimer: ReturnType<typeof setTimeout> | null = null;
+// Swallows the synthetic click that follows a hold-to-cancel release.
+let suppressClick = false;
 
 function onPointerDown() {
-  if (phase !== 'recording') return;
+  if (get(micState).phase !== 'recording') return;
   holdTimer = setTimeout(() => {
     cancelled = true;
     // The finger release after a hold-cancel still fires a synthetic click;
@@ -178,32 +190,33 @@ function onClick() {
     suppressClick = false;
     return;
   }
-  if (phase === 'idle') void start();
+  const phase = get(micState).phase;
+  if (phase === 'idle') void start(oninsert);
   else if (phase === 'recording') void stopAndProcess();
 }
 
-const remaining = $derived(Math.max(0, MAX_SECONDS - elapsed));
-const showCountdown = $derived((phase as State) === 'recording' && remaining <= 10);
+const remaining = $derived(Math.max(0, MAX_SECONDS - $micState.elapsed));
+const showCountdown = $derived(($micState.phase as State) === 'recording' && remaining <= 10);
 </script>
 
 <button
   type="button"
   class="mic-quill"
-  class:is-recording={phase === 'recording'}
-  class:is-processing={phase === 'processing'}
-  class:is-error={phase === 'error'}
+  class:is-recording={$micState.phase === 'recording'}
+  class:is-processing={$micState.phase === 'processing'}
+  class:is-error={$micState.phase === 'error'}
   onclick={onClick}
   onpointerdown={onPointerDown}
   onpointerup={onPointerUp}
   onpointerleave={onPointerUp}
-  aria-label={phase === 'idle'
+  aria-label={$micState.phase === 'idle'
     ? (ariaLabel ?? 'Start voice writing')
-    : phase === 'recording'
+    : $micState.phase === 'recording'
       ? 'Stop voice writing (hold to cancel)'
-      : phase === 'processing'
+      : $micState.phase === 'processing'
         ? 'Processing voice'
-        : (errorMessage || 'Voice error')}
-  disabled={phase === 'processing'}
+        : ($micState.errorMessage || 'Voice error')}
+  disabled={$micState.phase === 'processing'}
 >
   <svg viewBox="0 0 24 24" aria-hidden="true" class="quill-svg">
     <path

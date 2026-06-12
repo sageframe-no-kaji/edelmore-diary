@@ -1818,6 +1818,9 @@ $effect(() => {
 					{:else if spreadState.kind === 'entry'}
 						{@const rightStart = splitPoints[entryPageSpread * 2]}
 						{@const rightEnd = splitPoints[entryPageSpread * 2 + 1]}
+						<div class="page-mic-quill">
+							<MicQuill oninsert={handleTranscriptionInsert} />
+						</div>
 						{#if rightStart !== undefined}
 							{#if birdPlaying}
 								<div
@@ -2520,6 +2523,18 @@ $effect(() => {
 		width: 1.5rem;
 		height: 1.5rem;
 		flex-shrink: 0;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+	}
+
+	.page-mic-quill {
+		position: absolute;
+		top: 1.2cqi;
+		right: 1.5cqi;
+		z-index: 20;
+		width: 10.8cqi;
+		height: 10.8cqi;
 		display: flex;
 		align-items: center;
 		justify-content: center;
