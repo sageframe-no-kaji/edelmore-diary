@@ -22,8 +22,9 @@ import {
 import { findSplitIndex, snapToWordBreak } from '$lib/overflow.js';
 import type { Snippet } from 'svelte';
 import { onMount, tick, untrack } from 'svelte';
-import { cubicOut } from 'svelte/easing';
+import { cubicInOut, cubicOut } from 'svelte/easing';
 import { tweened } from 'svelte/motion';
+import { fade, slide } from 'svelte/transition';
 
 type SpreadState =
   | { kind: 'cover' }
@@ -2059,16 +2060,16 @@ $effect(() => {
 								</svg>
 							</button>
 							{#if spellIconsOpen}
-								<button type="button" onclick={() => { void flip('backward', () => { spreadState = { kind: 'toc' }; }); }} class="spell-entries" aria-label="Recent entries">
+								<button type="button" transition:fade={{ duration: 280 }} onclick={() => { void flip('backward', () => { spreadState = { kind: 'toc' }; }); }} class="spell-entries" aria-label="Recent entries">
 									<img src="/entries.svg" style="width: 100%; height: 100%; object-fit: contain" alt="" />
 								</button>
-								<button type="button" onclick={() => { void flip('forward', () => navigateTo(todayIso())); }} class="spell-today" aria-label="Turn to today">
+								<button type="button" transition:fade={{ duration: 280 }} onclick={() => { void flip('forward', () => navigateTo(todayIso())); }} class="spell-today" aria-label="Turn to today">
 									<img src="/now.svg" style="width: 100%; height: 100%; object-fit: contain" alt="" />
 								</button>
-								<button type="button" onclick={openSettings} class="spell-settings" aria-label="Settings">
+								<button type="button" transition:fade={{ duration: 280 }} onclick={openSettings} class="spell-settings" aria-label="Settings">
 									<img src="/edelweiss.svg" style="width: 100%; height: 100%; object-fit: contain" alt="" />
 								</button>
-								<div class="spell-bird-cluster">
+								<div class="spell-bird-cluster" transition:fade={{ duration: 280 }}>
 									<button type="button" onclick={speakEntry} class="spell-bird" class:is-loading={birdPhase === 'loading'} class:is-playing={birdPhase === 'playing'} class:is-paused={birdPhase === 'paused'} aria-label={birdPhase === 'loading' ? 'Preparing narration…' : birdPhase === 'playing' ? 'Pause' : birdPhase === 'paused' ? 'Resume' : 'Listen'}>
 										<img src="/bird.svg" style="width: 100%; height: 100%; object-fit: contain" alt="" />
 										<span class="spell-bird-note" aria-hidden="true">♪</span>
@@ -2083,14 +2084,15 @@ $effect(() => {
 										</button>
 									</div>
 								</div>
-								<div class="spell-quill">
+								<div class="spell-quill" transition:fade={{ duration: 280 }}>
 									<MicQuill oninsert={handleTranscriptionInsert} onstart={handleRecordingStart} />
 								</div>
 							{/if}
 						</div>
 						{#if spellHelperOpen}
-							<div class="spell-panel-content">
+							<div class="spell-panel-content" transition:slide={{ duration: 520, easing: cubicInOut }}>
 								<p class="spell-title">✨ Magic Writing Spells</p>
+								<span class="spell-help-label">Decoration options:</span>
 								<ul class="spell-list">
 									<li><span class="spell-code">*word*</span> <em>soft and quiet</em></li>
 									<li><span class="spell-code">**word**</span> <strong>strong and loud</strong></li>
@@ -2496,13 +2498,18 @@ $effect(() => {
 		border: 1px solid #dfc9a4;
 		border-radius: 1.45cqi;
 		padding: 0.75cqi;
-		width: fit-content;
+		/* Explicit collapsed width (flower + padding) so the bar animates to a
+		   fixed target on close instead of snapping when fit-content recomputes
+		   as the icons unmount — lets the close cleanly mirror the open. */
+		width: calc(var(--spell-icon-size) + 1.5cqi);
 		display: flex;
 		align-items: center;
-		justify-content: center;
+		/* space-between in every state: on close the visible icons must not snap
+		   from spread to centered before the width animates (the lurch). */
+		justify-content: space-between;
 		gap: 1.2cqi;
 		box-shadow: 0 1px 6px rgba(0, 0, 0, 0.06);
-		transition: width 0.55s ease, padding 0.55s ease;
+		transition: width 0.7s cubic-bezier(0.45, 0, 0.2, 1), padding 0.7s cubic-bezier(0.45, 0, 0.2, 1);
 	}
 
 	.spell-panel.is-icons .spell-icon-row,
@@ -2517,26 +2524,22 @@ $effect(() => {
 		align-items: center;
 		justify-content: center;
 		width: 100%;
+		padding: 0.75cqi 1.4cqi;
+		gap: 2cqi;
 		background: #fefcf7;
 		border: 1px solid #dfc9a4;
 		border-radius: 1.25cqi;
 		overflow: hidden;
-		animation: spell-ribbon-open 0.7s ease both;
 	}
 
-	.spell-panel.is-helper .spell-panel-content {
-		padding: 0.75cqi 1.4cqi;
-	}
-
-	@keyframes spell-ribbon-open {
-		from {
-			opacity: 0;
-			transform: translateY(-0.45rem);
-		}
-		to {
-			opacity: 1;
-			transform: translateY(0);
-		}
+	.spell-help-label {
+		font-family: 'EB Garamond', Georgia, serif;
+		font-size: 1.5cqi;
+		color: #8b6914;
+		font-weight: 600;
+		white-space: nowrap;
+		opacity: 0.9;
+		flex-shrink: 0;
 	}
 
 	.spell-title {
@@ -2556,7 +2559,7 @@ $effect(() => {
 		flex-direction: row;
 		flex-wrap: nowrap;
 		justify-content: center;
-		gap: 1.8cqi;
+		gap: 2.6cqi;
 		font-size: 1.42cqi;
 		white-space: nowrap;
 		width: 100%;
