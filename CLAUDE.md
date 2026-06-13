@@ -46,8 +46,28 @@ Kamae chain lives in `ho-process/` (gitignored — private practitioner work):
 
 ## Deployment
 
-Docker → homelab via `sageframe-docker-deploy` when ready. See `ho-process/kamae-2-edelmore-system-design.md`
-for the deployment sketch. Whisper is a separate homelab service.
+Production runs on **jodo** (homelab Docker host, x86_64) as `svc-edelmore-diary`, port
+`8025:3000`, behind Caddy at `diary.sageframe.net`. Voice services (Whisper transcription,
+Kokoro TTS) are separate homelab services on **shingan** — optional; the diary degrades
+gracefully without them.
+
+**Deploy pattern: build-on-host from git.** jodo holds a read-only deploy-key clone of this
+repo at `/opt/services/jodo-edelmore-diary/code` (the deploy key is registered on the GitHub
+repo under "jodo-build-deploy"; jodo's `~/.ssh/config` maps `github.com` → `~/.ssh/edelmore_deploy`).
+The host `docker-compose.yml` uses `build: ./code`, so a deploy is:
+
+```
+ssh jodo 'cd /opt/services/jodo-edelmore-diary && git -C code pull && docker compose up -d --build'
+```
+
+Native amd64 build, no image transfer. The SQLite DB lives on the `./data` bind-mount
+(`/opt/services/jodo-edelmore-diary/data`) and is never touched by a rebuild. Push to `main`
+first so the host pulls verified code (CI gates lint/check/tests on `main`, and also publishes
+a `ghcr.io` image as a byproduct — currently unused by the host).
+
+The host compose is tracked in the `sageframe-config` repo
+(`jodo/opt/services/jodo-edelmore-diary/docker-compose.yml`); sync it after any host-side change
+via the `sageframe-config-sync` skill.
 
 ## References
 
