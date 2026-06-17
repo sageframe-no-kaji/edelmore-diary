@@ -210,7 +210,8 @@ export type EntryDatePreview = {
   preview: string;
 };
 
-export function makeEntryPreview(content: string): string {
+export function makeEntryPreview(content: string | null): string {
+  if (!content) return '';
   const firstLine = content.split('\n')[0].trimStart();
   if (firstLine.length <= 20) return firstLine;
   return `${firstLine.slice(0, 20)}…`;
@@ -254,7 +255,7 @@ export function listEntryDatesWithPreview(
     .prepare(
       `SELECT entry_date, content FROM entries WHERE user_id = ? ORDER BY entry_date ${order}`
     )
-    .all(userId) as { entry_date: string; content: string }[];
+    .all(userId) as { entry_date: string; content: string | null }[];
   return rows.map((r) => ({
     entry_date: r.entry_date,
     preview: makeEntryPreview(r.content),
