@@ -3,10 +3,10 @@ import { describe, expect, it } from 'vitest';
 import { load } from './+layout.server.js';
 
 describe('(authenticated) layout load', () => {
-  it('redirects to /login when no user in locals', async () => {
+  it('redirects to /welcome when no user in locals', async () => {
     const db = createDb(':memory:');
     await expect(load({ locals: { db, user: undefined } } as any)).rejects.toMatchObject({
-      location: '/login',
+      location: '/welcome',
       status: 302,
     });
   });
