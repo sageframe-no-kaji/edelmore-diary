@@ -14,7 +14,7 @@
       <a class="wordmark" href="/welcome">Edelmore</a>
       <nav>
         <a href="#what">what it is</a>
-        <a href="#reader">coming soon</a>
+        <a href="#udl">why it matters</a>
         <a class="nav-cta" href="/login">open the diary →</a>
       </nav>
     </div>
@@ -30,7 +30,7 @@
       <h1>A book of your own.</h1>
       <p class="lead">Edelmore is a private diary shaped like a book. Voice transcription handles the writing; the diary reads entries back aloud. Pages turn. No cloud. Nobody reads it but the person who wrote it.</p>
       <div class="demo-box">
-        <p class="demo-label">Demo access</p>
+        <p class="demo-heading">Try the demo</p>
         <div class="demo-row">
           <span class="demo-key">username</span>
           <span class="demo-val">TAYLOR</span>
@@ -42,7 +42,7 @@
       </div>
       <div class="cta-row">
         <a class="btn" href="/login">Open the diary <span class="arrow">→</span></a>
-        <span class="cta-note">resets nightly · no account required</span>
+        <span class="cta-chip">resets nightly · no account required</span>
       </div>
     </div>
   </section>
@@ -76,7 +76,15 @@
     </div>
   </section>
 
-  <!-- ── Story (dark) ── -->
+  <!-- ── UDL / Accessibility ── -->
+  <section id="udl" class="udl-section">
+    <div class="wrap udl-inner">
+      <p class="udl-quote">"Designed to work for every learner — not just the typical one."</p>
+      <p class="udl-body">Edelmore is built on the principles of <a href="https://www.cast.org/impact/universal-design-for-learning-udl" target="_blank" rel="noopener">Universal Design for Learning</a>. Voice transcription removes the keyboard barrier. Read-aloud with word-by-word highlighting supports processing differences. No prompts, no time pressure, no right way to write. A tool that works for a child with dyslexia, ADHD, or ataxia works better for everyone.</p>
+    </div>
+  </section>
+
+  <!-- ── Story (warm dark) ── -->
   <section class="dark">
     <div class="wrap">
       <h2>Built for a child who wanted her own Anne Frank.</h2>
@@ -96,8 +104,9 @@
   <section class="final">
     <div class="wrap">
       <h2>Write the thing that happened today.</h2>
-      <span class="tagline">This demo resets nightly. Taylor's diary is waiting.</span>
-      <div class="demo-box demo-box-final">
+      <p class="final-sub">Taylor's diary is waiting. It resets nightly so it's always fresh.</p>
+      <div class="demo-box">
+        <p class="demo-heading">Try the demo</p>
         <div class="demo-row">
           <span class="demo-key">username</span>
           <span class="demo-val">TAYLOR</span>
@@ -107,16 +116,19 @@
           <span class="demo-val">1313</span>
         </div>
       </div>
-      <a class="btn" href="/login">Open the diary <span class="arrow">→</span></a>
+      <div class="cta-row">
+        <a class="btn" href="/login">Open the diary <span class="arrow">→</span></a>
+        <span class="cta-chip">resets nightly · no account required</span>
+      </div>
     </div>
   </section>
 
   <!-- ── Reader teaser ── -->
   <section id="reader" class="reader-teaser">
-    <div class="wrap">
+    <div class="wrap reader-teaser-inner">
       <p class="reader-eyebrow">Coming soon</p>
       <p class="reader-title">Edelmore Reader</p>
-      <p class="reader-desc">A read-along ebook reader. Upload an EPUB or choose from a built-in library of public-domain classics — a songbird reads while each word glows. For the kids who hear stories better than they read them.</p>
+      <p class="reader-desc">A read-along ebook reader. A songbird reads while each word glows. For the kids who hear stories better than they read them — <em>Alice in Wonderland</em>, <em>The Wind in the Willows</em>, <em>The Secret Garden</em>, and more.</p>
     </div>
   </section>
 
@@ -142,16 +154,18 @@
     --white: #faf8f4;
     --accent: #c45a2d;
     --rule: #d0c9be;
-    --dark-bg: #1a1a1a;
+    --dark-bg: #1e1a15;
     --dark-text: #c8c2b8;
     --dark-prose: #b0a99e;
-    --dark-muted: #888;
-    --dark-rule: #333;
+    --dark-muted: #7a7068;
+    --dark-rule: #38322a;
+
     --display: 'DM Serif Display', Georgia, serif;
     --body: 'IBM Plex Sans', -apple-system, sans-serif;
     --mono: 'IBM Plex Mono', 'Courier New', monospace;
     --max: 1080px;
     --gutter: clamp(1.5rem, 5vw, 4rem);
+    --radius: 10px;
 
     font-family: var(--body);
     background: var(--ground);
@@ -179,40 +193,75 @@
   .label { font-family: var(--body); font-size: .8rem; font-weight: 600; letter-spacing: .12em; text-transform: uppercase; color: var(--ink-muted); margin-bottom: 1.1rem; }
   h1 { font-family: var(--display); font-weight: 400; font-size: clamp(2.6rem, 6vw, 4rem); line-height: 1.12; letter-spacing: -.01em; margin: 0 0 .2rem; }
   h2 { font-family: var(--display); font-weight: 400; font-size: clamp(1.7rem, 3.2vw, 2.3rem); line-height: 1.22; text-wrap: balance; }
-  h3 { font-family: var(--display); font-weight: 400; font-size: 1.2rem; line-height: 1.3; }
+  h3 { font-family: var(--display); font-weight: 400; font-size: 1.25rem; line-height: 1.3; margin: 0 0 .6rem; }
   p { color: var(--ink-light); font-size: 1.05rem; max-width: 640px; }
   .lead { font-size: 1.18rem; max-width: 560px; }
-  .tagline { font-family: var(--display); font-style: italic; color: var(--ink-muted); }
 
   /* ── Hero ── */
-  .hero { padding-top: clamp(3rem, 8vh, 5rem); text-align: center; }
+  .hero { padding-top: clamp(3rem, 8vh, 5rem); text-align: center; position: relative; }
+  .hero::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background-image: url('/background.png');
+    background-repeat: repeat;
+    background-size: 380px 380px;
+    opacity: 0.18;
+    pointer-events: none;
+  }
+  .hero > * { position: relative; }
   .medallion-wrap { margin-bottom: 1.75rem; }
   .medallion { width: clamp(160px, 24vw, 260px); height: auto; display: inline-block; }
   .hero .label { margin-bottom: .75rem; }
   .hero h1 { margin: 0 auto .2rem; }
   .hero p { margin: 1.4rem auto 0; }
-  .cta-row { margin-top: 2rem; display: flex; align-items: center; justify-content: center; gap: 2rem; flex-wrap: wrap; }
-  .cta-note { font-family: var(--mono); font-size: .8rem; letter-spacing: .02em; color: var(--ink-muted); }
 
   /* ── Demo box ── */
   .demo-box {
     display: inline-block;
     margin: 1.75rem auto 0;
     background: var(--white);
-    border: 2px solid var(--rule);
-    border-radius: 3px;
-    padding: 1.1rem 1.8rem;
+    border: 1.5px solid var(--rule);
+    border-radius: var(--radius);
+    padding: 1.25rem 2rem;
     text-align: left;
+    min-width: 260px;
   }
-  .demo-label { font-family: var(--mono); font-size: .65rem; letter-spacing: .1em; text-transform: uppercase; color: var(--ink-muted); margin-bottom: .7rem; max-width: none; }
-  .demo-row { display: flex; gap: 2rem; align-items: baseline; margin-bottom: .35rem; }
+  .demo-heading {
+    font-family: var(--display);
+    font-style: italic;
+    font-size: 1rem;
+    color: var(--ink-muted);
+    margin: 0 0 .85rem;
+    max-width: none;
+  }
+  .demo-row {
+    display: grid;
+    grid-template-columns: 6.5rem 1fr;
+    align-items: baseline;
+    margin-bottom: .4rem;
+  }
   .demo-row:last-child { margin-bottom: 0; }
-  .demo-key { font-family: var(--mono); font-size: .8rem; letter-spacing: .04em; color: var(--ink-muted); min-width: 5rem; }
-  .demo-val { font-family: var(--mono); font-size: 1.5rem; font-weight: 500; color: var(--ink); letter-spacing: .1em; }
-  .demo-box-final { margin: 1.25rem auto 2rem; background: var(--ground-warm); border: 1px solid var(--rule); }
+  .demo-key { font-family: var(--mono); font-size: .85rem; letter-spacing: .04em; color: var(--ink-muted); }
+  .demo-val { font-family: var(--mono); font-size: 1.6rem; font-weight: 500; color: var(--ink); letter-spacing: .08em; }
+
+  /* ── CTA row ── */
+  .cta-row { margin-top: 1.75rem; display: flex; align-items: center; justify-content: center; gap: 1rem; flex-wrap: wrap; }
+  .cta-chip {
+    font-family: var(--mono);
+    font-size: .85rem;
+    letter-spacing: .02em;
+    color: var(--ink-muted);
+    background: var(--white);
+    border: 1.5px solid var(--rule);
+    border-radius: 6px;
+    padding: .7rem 1.2rem;
+    white-space: nowrap;
+    line-height: 1;
+  }
 
   /* ── Button ── */
-  .btn { display: inline-flex; align-items: center; gap: .5rem; font-family: var(--mono); font-size: .85rem; font-weight: 500; letter-spacing: .02em; padding: .85rem 1.4rem; border-radius: 2px; background: var(--accent); color: var(--white); transition: background .2s ease; }
+  .btn { display: inline-flex; align-items: center; gap: .5rem; font-family: var(--mono); font-size: .85rem; font-weight: 500; letter-spacing: .02em; line-height: 1; padding: .7rem 1.4rem; border-radius: 6px; background: var(--accent); color: var(--white); transition: background .2s ease; }
   .btn:hover { color: var(--white); background: #a84a22; }
   .arrow { display: inline-block; transition: transform .2s ease; }
   .btn:hover .arrow { transform: translateX(4px); }
@@ -221,15 +270,21 @@
   .what-section { border-top: 1px solid var(--rule); }
   .what-section h2 { margin-bottom: 2rem; }
   .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1.25rem; }
-  .card { background: var(--white); border: 1px solid var(--rule); border-radius: 2px; padding: 1.6rem; transition: border-color .2s ease; }
+  .card { background: var(--white); border: 1.5px solid var(--rule); border-radius: var(--radius); padding: 1.6rem; transition: border-color .2s ease; }
   .card:hover { border-color: var(--accent); }
   .card-ornament { font-family: var(--display); font-size: 1.1rem; color: var(--accent); display: block; margin-bottom: .5rem; line-height: 1; }
-  .card h3 { margin: 0 0 .6rem; }
-  .card p { font-size: .92rem; color: var(--ink-muted); max-width: none; }
+  .card p { font-size: .95rem; color: var(--ink-muted); max-width: none; }
+
+  /* ── UDL ── */
+  .udl-section { background: var(--ground-warm); border-top: 1px solid var(--rule); border-bottom: 1px solid var(--rule); padding: clamp(2.5rem, 6vh, 4.5rem) 0; }
+  .udl-inner { max-width: 680px; }
+  .udl-quote { font-family: var(--display); font-style: italic; font-size: clamp(1.25rem, 2.5vw, 1.65rem); line-height: 1.45; color: var(--ink); margin-bottom: 1.25rem; max-width: none; }
+  .udl-body { font-size: 1.05rem; color: var(--ink-light); max-width: none; }
+  .udl-body a { font-weight: 500; }
 
   /* ── Dark ── */
-  .dark { background: var(--dark-bg); color: var(--dark-prose); }
-  .dark h2 { color: var(--ground); margin-bottom: 1.4rem; text-wrap: balance; }
+  .dark { background: var(--dark-bg); }
+  .dark h2 { color: var(--dark-text); margin-bottom: 1.4rem; }
   .dark p { color: var(--dark-prose); }
   .dark p + p { margin-top: 1rem; }
   .not-title { font-family: var(--body); font-size: .78rem; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; color: var(--dark-muted); margin: 2rem 0 .9rem; max-width: none; }
@@ -237,22 +292,24 @@
   .not-list li { font-size: .95rem; color: var(--dark-text); margin-bottom: .8rem; }
 
   /* ── Final CTA ── */
-  .final { text-align: center; }
-  .final h2 { margin-bottom: .5rem; }
-  .final .tagline { display: block; font-size: 1.15rem; margin-bottom: 0; }
+  .final { text-align: center; border-top: 1px solid var(--rule); }
+  .final h2 { margin-bottom: .6rem; }
+  .final-sub { font-family: var(--display); font-style: italic; font-size: 1.15rem; color: var(--ink-muted); margin: 0 auto; }
 
   /* ── Reader teaser ── */
-  .reader-teaser { border-top: 1px solid var(--rule); padding: clamp(2rem, 5vh, 3.5rem) 0; text-align: center; }
+  .reader-teaser { background: var(--ground-warm); border-top: 1px solid var(--rule); padding: clamp(2rem, 5vh, 3rem) 0; text-align: center; }
+  .reader-teaser-inner { max-width: 600px; margin: 0 auto; padding-left: var(--gutter); padding-right: var(--gutter); }
   .reader-eyebrow { font-family: var(--mono); font-size: .72rem; letter-spacing: .1em; text-transform: uppercase; color: var(--ink-muted); margin-bottom: .5rem; }
-  .reader-title { font-family: var(--display); font-size: clamp(1.2rem, 2.5vw, 1.6rem); font-weight: 400; color: var(--ink); margin-bottom: .75rem; }
-  .reader-desc { font-size: 1rem; color: var(--ink-muted); max-width: 560px; margin-left: auto; margin-right: auto; }
+  .reader-title { font-family: var(--display); font-size: clamp(1.3rem, 2.8vw, 1.75rem); font-weight: 400; color: var(--ink); margin-bottom: .75rem; }
+  .reader-desc { font-size: 1rem; color: var(--ink-muted); max-width: none; }
+  .reader-desc em { color: var(--ink-light); font-style: italic; }
 
   /* ── Footer ── */
   footer { border-top: 1px solid var(--rule); padding: 2.5rem 0; }
   .ftr-inner { display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap; }
   .fnote { font-family: var(--mono); font-size: .72rem; color: var(--ink-muted); }
   .fnote a { font-size: inherit; }
-  .demo-pill { font-family: var(--mono); font-size: .68rem; letter-spacing: .06em; text-transform: uppercase; color: var(--ink-muted); border: 1px solid var(--rule); border-radius: 2px; padding: .25rem .6rem; }
+  .demo-pill { font-family: var(--mono); font-size: .68rem; letter-spacing: .06em; text-transform: uppercase; color: var(--ink-muted); border: 1px solid var(--rule); border-radius: 4px; padding: .25rem .6rem; }
 
   /* ── Reduced motion ── */
   @media (prefers-reduced-motion: reduce) {
