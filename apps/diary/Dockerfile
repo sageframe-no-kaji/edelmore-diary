@@ -14,12 +14,17 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     python3 make g++ && rm -rf /var/lib/apt/lists/*
 
 # Manifests first, for cache-friendly layering. Root manifest + lockfile drive
-# the install; apps/diary/package.json declares the diary app's deps.
+# the install; workspace package.json files (apps/diary plus shared packages/*)
+# must all be present so `npm ci` symlinks them under node_modules/@edelmore.
 COPY package.json package-lock.json ./
 COPY apps/diary/package.json apps/diary/package.json
+COPY packages/design/package.json packages/design/package.json
+COPY packages/book/package.json packages/book/package.json
 RUN npm ci
 
-# Then source — changes here don't bust the install cache above.
+# Then source — changes here don't bust the install cache above. Shared
+# packages travel with the diary so their CSS/components resolve at build time.
+COPY packages packages
 COPY apps/diary apps/diary
 
 # SvelteKit's adapter-node emits to apps/diary/build. Prune devDeps from the
