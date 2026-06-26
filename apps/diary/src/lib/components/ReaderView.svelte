@@ -86,8 +86,11 @@ async function scrollCurrentIntoView() {
       box-shadow 220ms ease-out,
       text-shadow 220ms ease-out;
     border-radius: 999px;
-    padding: 0.02em 0.3em;
-    margin: 0 -0.18em;
+    /* Padding + negative margin must cancel exactly: any net offset shifts
+       text wrapping and the page's splitPoints (computed against the editor)
+       no longer match — bird mode would render a different layout than idle. */
+    padding: 0 0.15em;
+    margin: 0 -0.15em;
   }
 
   /* Hazy-dreamlike aura in the soft greens of the edelweiss leaves

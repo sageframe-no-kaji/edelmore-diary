@@ -722,13 +722,19 @@ function startBoundaryPolling() {
     const t = birdChunkTimeOffset + birdAudioEl.currentTime;
 
     // Advance the current-word pointer and update the highlight index.
+    // Skip timings whose server-side fuzzy match failed (char_end === char_start):
+    // moving the highlight to a stale cursor would yank the glow to the wrong
+    // word, then snap forward when the next match lands. Leave it on the last
+    // good word instead — audio still advances.
     while (
       birdTtsBoundaryIdx < birdTtsTimings.length &&
       birdTtsTimings[birdTtsBoundaryIdx].start <= t
     ) {
       const word = birdTtsTimings[birdTtsBoundaryIdx];
-      birdAbsoluteIndex = birdTtsBaseOffset + word.char_start;
-      currentNarrationCharIndex = birdAbsoluteIndex;
+      if (word.char_end > word.char_start) {
+        birdAbsoluteIndex = birdTtsBaseOffset + word.char_start;
+        currentNarrationCharIndex = birdAbsoluteIndex;
+      }
       birdTtsBoundaryIdx += 1;
     }
 
@@ -1916,6 +1922,11 @@ $effect(() => {
 										<img src="/bird.svg" style="width: 100%; height: 100%; object-fit: contain" alt="" />
 										<span class="spell-bird-note" aria-hidden="true">♪</span>
 									</button>
+									{#if birdPhase !== 'idle'}
+										<button type="button" onclick={stopBird} class="spell-nest" aria-label="Stop reading">
+											<img src="/nest.svg" alt="" />
+										</button>
+									{/if}
 									<div class="spell-bird-speed" class:is-visible={birdPhase !== 'idle'}>
 										<button type="button" onclick={() => changeBirdRate(-0.2)} class="spell-bird-tortoise" aria-label="Slower" disabled={birdRate <= 0.2}>
 											<img src="/tortoise.png" alt="" />
@@ -2545,6 +2556,35 @@ $effect(() => {
 		width: 100%;
 		height: 100%;
 	}
+	/* Nest of twigs — appears only while the bird is reading; tap to stop. */
+	.spell-nest {
+		position: absolute;
+		top: 50%;
+		left: 100%;
+		transform: translateY(-50%);
+		margin-left: 0.6cqi;
+		width: calc(var(--spell-icon-size) * 0.85);
+		height: calc(var(--spell-icon-size) * 0.85);
+		background: transparent;
+		border: none;
+		padding: 0;
+		cursor: pointer;
+		opacity: 0.75;
+		transition: opacity 0.15s ease;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		z-index: 41;
+	}
+	.spell-nest:hover,
+	.spell-nest:focus-visible {
+		opacity: 1;
+	}
+	.spell-nest img {
+		width: 100%;
+		height: 100%;
+		object-fit: contain;
+	}
 	.spell-bird-speed {
 		position: absolute;
 		top: calc(100% + 1.2cqi);
@@ -2624,12 +2664,14 @@ $effect(() => {
 	/* ── Ribbon tooltips ─────────────────────────────────────────────────── */
 	.spell-quill::after    { content: "speak"; }
 	.spell-bird::after     { content: "listen"; }
+	.spell-nest::after     { content: "stop"; }
 	.spell-today::after    { content: "today"; }
 	.spell-entries::after  { content: "recent entries"; }
 	.spell-settings::after { content: "settings"; }
 
 	.spell-quill::after,
 	.spell-bird::after,
+	.spell-nest::after,
 	.spell-today::after,
 	.spell-entries::after,
 	.spell-settings::after {
@@ -2655,6 +2697,8 @@ $effect(() => {
 	.spell-quill:focus-within::after,
 	.spell-bird:hover::after,
 	.spell-bird:focus-visible::after,
+	.spell-nest:hover::after,
+	.spell-nest:focus-visible::after,
 	.spell-today:hover::after,
 	.spell-today:focus-visible::after,
 	.spell-entries:hover::after,

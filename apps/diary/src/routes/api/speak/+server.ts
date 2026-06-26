@@ -89,19 +89,38 @@ function formatToMime(fmt: string): string {
 }
 
 /**
+ * Normalise curly/smart punctuation to ASCII for matching. All substitutions
+ * are 1:1 so character indices into the normalised string map back to the
+ * original 1:1 — without this, indexOf misses contractions like `don't`
+ * (Kokoro emits `don't`) and the boundary cursor stalls.
+ */
+function normaliseForMatch(s: string): string {
+  return s.replace(/[‘’ʼ‛]/g, "'").replace(/[“”‟]/g, '"');
+}
+
+/**
  * Map each upstream word to a WordTiming with character offsets into `input`.
  * `startCursor` advances across calls so successive chunks don't re-match
  * earlier words in the same text.
+ *
+ * Matching runs against a normalised copy of `input` so curly apostrophes in
+ * the source don't defeat Kokoro's straight-quoted tokens. `normalisedInput`
+ * is shared across chunks so the cost is paid once per request.
  */
 function computeCharOffsets(
   input: string,
+  normalisedInput: string,
   words: UpstreamWord[],
   startCursor = 0
 ): { timings: WordTiming[]; nextCursor: number } {
   let cursor = startCursor;
   const timings = words.map((w) => {
-    const idx = input.indexOf(w.word, cursor);
+    const needle = normaliseForMatch(w.word);
+    const idx = normalisedInput.indexOf(needle, cursor);
     if (idx === -1) {
+      // Sentinel: char_start === char_end signals "no anchor for this word".
+      // The client skips the highlight update so it stays on the last
+      // successfully matched word instead of snapping to a stale cursor.
       return {
         word: w.word,
         start: w.start_time,
@@ -110,7 +129,7 @@ function computeCharOffsets(
         char_end: cursor,
       };
     }
-    const charEnd = idx + w.word.length;
+    const charEnd = idx + needle.length;
     cursor = charEnd;
     return {
       word: w.word,
@@ -277,6 +296,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
   }
 
   const inputText = body.text;
+  const normalisedInputText = normaliseForMatch(inputText);
   const encoder = new TextEncoder();
 
   const stream = new ReadableStream({
@@ -306,6 +326,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
         const upstream = raw as UpstreamPayload;
         const { timings, nextCursor } = computeCharOffsets(
           inputText,
+          normalisedInputText,
           upstream.timestamps,
           charCursor
         );

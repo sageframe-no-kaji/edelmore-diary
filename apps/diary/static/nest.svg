@@ -1,0 +1,76 @@
+<svg width="320" height="180" viewBox="0 0 320 180" xmlns="http://www.w3.org/2000/svg">
+  <title>Twiggy cottagecore bird nest</title>
+
+  <defs>
+    <style>
+      .shadow { fill: #decfb9; opacity: .6; }
+      .twig-dark { fill: none; stroke: #755640; stroke-width: 4.5; stroke-linecap: round; stroke-linejoin: round; }
+      .twig-mid { fill: none; stroke: #a47f58; stroke-width: 4; stroke-linecap: round; stroke-linejoin: round; }
+      .twig-light { fill: none; stroke: #d2bb82; stroke-width: 3.5; stroke-linecap: round; stroke-linejoin: round; }
+      .twig-thin { fill: none; stroke: #6d4d3b; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+      .egg-cream { fill: #f4d8a9; stroke: #755640; stroke-width: 2.8; }
+      .egg-blue { fill: #40b8c2; stroke: #755640; stroke-width: 2.8; }
+      .speck { fill: #9b7655; opacity: .8; }
+    </style>
+  </defs>
+
+  <!-- soft ground shadow -->
+  <ellipse class="shadow" cx="160" cy="145" rx="86" ry="11"/>
+
+  <!-- back twig halo -->
+  <path class="twig-light" d="M81 108c21-27 54-39 88-36 34 3 62 18 76 43"/>
+  <path class="twig-mid" d="M76 116c22-24 59-37 97-32 33 4 58 18 75 36"/>
+  <path class="twig-thin" d="M92 103c40-25 91-22 132 6"/>
+  <path class="twig-thin" d="M105 93c26-12 70-13 101 2"/>
+
+  <!-- eggs -->
+  <g transform="translate(0 1)">
+    <ellipse class="egg-cream" cx="139" cy="89" rx="15.5" ry="23" transform="rotate(-14 139 89)"/>
+    <ellipse class="egg-blue" cx="162" cy="84" rx="17" ry="25" transform="rotate(4 162 84)"/>
+    <ellipse class="egg-cream" cx="185" cy="90" rx="15" ry="22" transform="rotate(15 185 90)"/>
+
+    <circle class="speck" cx="134" cy="82" r="1.6"/>
+    <circle class="speck" cx="144" cy="99" r="1.3"/>
+    <circle class="speck" cx="179" cy="84" r="1.5"/>
+    <circle class="speck" cx="191" cy="98" r="1.2"/>
+  </g>
+
+  <!-- nest cup fill -->
+  <path fill="#d9bd83" d="M86 111c11-20 40-32 76-32 35 0 64 12 75 32-13 14-39 22-76 22-36 0-63-8-75-22z"/>
+  <path fill="#efd69a" d="M109 107c10-10 29-16 52-16 22 0 41 6 51 16-10 8-28 13-51 13-24 0-42-5-52-13z"/>
+
+  <!-- front woven twig mass -->
+  <path class="twig-dark" d="M70 115c23 24 146 31 181 3"/>
+  <path class="twig-mid" d="M78 127c35 22 132 24 165-1"/>
+  <path class="twig-light" d="M94 139c35 13 94 15 130 1"/>
+
+  <!-- layered crossing twigs -->
+  <path class="twig-thin" d="M65 122c42-4 68-22 102-41"/>
+  <path class="twig-thin" d="M83 136c37-20 71-34 128-38"/>
+  <path class="twig-thin" d="M104 145c34-24 74-34 132-35"/>
+  <path class="twig-thin" d="M253 121c-37-5-65-23-105-40"/>
+  <path class="twig-thin" d="M238 137c-31-18-65-31-114-33"/>
+  <path class="twig-thin" d="M97 112c42-15 83-16 126-1"/>
+  <path class="twig-thin" d="M93 125c39-9 95-12 132-1"/>
+  <path class="twig-thin" d="M116 133c30-8 68-8 98 0"/>
+
+  <!-- twig ends sticking out -->
+  <path class="twig-dark" d="M75 116l-27-11"/>
+  <path class="twig-mid" d="M88 130l-35 7"/>
+  <path class="twig-light" d="M98 140l-23 14"/>
+  <path class="twig-mid" d="M239 118l35-12"/>
+  <path class="twig-dark" d="M229 132l32 15"/>
+  <path class="twig-light" d="M212 142l24 18"/>
+
+  <!-- small forked branches -->
+  <path class="twig-thin" d="M54 106l-13-8"/>
+  <path class="twig-thin" d="M55 107l-15 3"/>
+  <path class="twig-thin" d="M263 147l16 2"/>
+  <path class="twig-thin" d="M262 147l10 12"/>
+  <path class="twig-thin" d="M274 106l15-13"/>
+  <path class="twig-thin" d="M274 106l17 0"/>
+
+  <!-- tiny cottagecore leaf accents -->
+  <path fill="#d3bd83" d="M69 103c10-7 20-8 28-3-8 6-18 8-28 3z"/>
+  <path fill="#b99f6c" d="M248 104c12-4 22-1 29 5-10 4-20 2-29-5z"/>
+</svg>

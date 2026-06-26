@@ -260,6 +260,39 @@ describe('POST /api/speak', () => {
     expect(chunk.format).toBe(mime);
   });
 
+  it("matches Kokoro's straight-apostrophe word against curly-apostrophe source text", async () => {
+    // Kokoro emits contractions with a straight apostrophe; diary text often
+    // contains the typographic curly form (’). Without normalisation the
+    // server's indexOf misses, the cursor stalls, and the client highlight
+    // freezes on the prior word until a later match jumps it forward.
+    const source = 'I don’t care.'; // curly apostrophe in "don't"
+    (globalThis.fetch as ReturnType<typeof vi.fn>).mockResolvedValueOnce(
+      makeUpstreamStreamResponse([
+        {
+          audio: btoa('c'),
+          audio_format: 'mp3',
+          timestamps: [
+            { word: 'I', start_time: 0, end_time: 0.1 },
+            { word: "don't", start_time: 0.1, end_time: 0.4 }, // straight apostrophe
+            { word: 'care', start_time: 0.4, end_time: 0.7 },
+          ],
+        },
+      ])
+    );
+
+    const response = await POST(makeAuthedEvent({ text: source, voice: 'af_bella', speed: 1 }));
+    const [chunk] = (await readNdjson(response)) as Array<{
+      words: Array<Record<string, unknown>>;
+    }>;
+    // All three words anchor to their real positions in the source — and the
+    // emitted char_start/char_end pair stays a valid slice of the original
+    // (1:1 normalisation means positions don't shift).
+    expect(chunk.words[1]).toMatchObject({ char_start: 2, char_end: 7 });
+    expect(source.slice(2, 7)).toBe('don’t');
+    expect(chunk.words[2]).toMatchObject({ char_start: 8, char_end: 12 });
+    expect(source.slice(8, 12)).toBe('care');
+  });
+
   it('emits cursor-based offsets for a word not present in the source text', async () => {
     (globalThis.fetch as ReturnType<typeof vi.fn>).mockResolvedValueOnce(
       makeUpstreamStreamResponse([
