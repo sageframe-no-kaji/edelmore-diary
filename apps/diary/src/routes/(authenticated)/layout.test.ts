@@ -1,9 +1,30 @@
 import { createDb } from '$lib/db.js';
-import { describe, expect, it } from 'vitest';
-import { load } from './+layout.server.js';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+
+// Mock $env/dynamic/private before importing the handler. Mutable so tests
+// can toggle DEMO_MODE (truthy = redirect to /welcome demo landing).
+vi.mock('$env/dynamic/private', () => ({
+  env: {} as Record<string, string | undefined>,
+}));
+
+const env = (await import('$env/dynamic/private')).env as Record<string, string | undefined>;
+const { load } = await import('./+layout.server.js');
+
+beforeEach(() => {
+  env.DEMO_MODE = undefined;
+});
 
 describe('(authenticated) layout load', () => {
-  it('redirects to /welcome when no user in locals', async () => {
+  it('redirects unauthenticated visitors to /login by default', async () => {
+    const db = createDb(':memory:');
+    await expect(load({ locals: { db, user: undefined } } as any)).rejects.toMatchObject({
+      location: '/login',
+      status: 302,
+    });
+  });
+
+  it('redirects to /welcome when DEMO_MODE=true', async () => {
+    env.DEMO_MODE = 'true';
     const db = createDb(':memory:');
     await expect(load({ locals: { db, user: undefined } } as any)).rejects.toMatchObject({
       location: '/welcome',

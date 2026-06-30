@@ -7,11 +7,27 @@ const { data }: { data: PageData } = $props();
 
 const FONT_STEPS = [2.4, 2.8, 3.2, 3.6, 4.0, 4.4];
 
+// Snap an arbitrary value (e.g. an off-step legacy DB value) to the nearest
+// step index, so the size label can't render "0 / 6".
+function snapIndex(size: number): number {
+  let bestIdx = 0;
+  let bestDist = Infinity;
+  for (let i = 0; i < FONT_STEPS.length; i++) {
+    const d = Math.abs((FONT_STEPS[i] as number) - size);
+    if (d < bestDist) {
+      bestDist = d;
+      bestIdx = i;
+    }
+  }
+  return bestIdx;
+}
+
 // Optimistic local state — initialized once from server, updated on each step click.
 // biome-ignore lint/style/useConst: mutated via onsubmit handlers in template
 let currentSize = $state(untrack(() => data.font_size));
-const prevSize = $derived(FONT_STEPS[FONT_STEPS.indexOf(currentSize) - 1] ?? null);
-const nextSize = $derived(FONT_STEPS[FONT_STEPS.indexOf(currentSize) + 1] ?? null);
+const currentIndex = $derived(snapIndex(currentSize));
+const prevSize = $derived(FONT_STEPS[currentIndex - 1] ?? null);
+const nextSize = $derived(FONT_STEPS[currentIndex + 1] ?? null);
 </script>
 
 <div class="settings-shell">
@@ -70,7 +86,7 @@ const nextSize = $derived(FONT_STEPS[FONT_STEPS.indexOf(currentSize) + 1] ?? nul
           <button type="submit" class="step-btn" disabled={prevSize === null} aria-label="Decrease text size">−</button>
         </form>
         <span class="size-label">
-          {FONT_STEPS.indexOf(currentSize) + 1} / {FONT_STEPS.length}
+          {currentIndex + 1} / {FONT_STEPS.length}
         </span>
         <form method="POST" action="?/updateFontSize" use:enhance onsubmit={() => { if (nextSize) currentSize = nextSize; }}>
           <input type="hidden" name="font_size" value={nextSize ?? currentSize} />

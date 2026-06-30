@@ -101,7 +101,7 @@ const activeCover = $derived(findCover(coverId));
 // biome-ignore lint/suspicious/noExplicitAny: layout data merged into $page.data
 let username = $state(untrack(() => ($page.data as any).user?.username ?? ''));
 // biome-ignore lint/suspicious/noExplicitAny: layout data merged into $page.data
-let fontSizeCqw = $state(untrack(() => ($page.data as any).user?.font_size ?? 3.4));
+let fontSizeCqw = $state(untrack(() => ($page.data as any).user?.font_size ?? 4.0));
 // biome-ignore lint/suspicious/noExplicitAny: layout data merged into $page.data
 let diaryTitle = $state(untrack(() => ($page.data as any).user?.diary_title ?? 'D I A R Y'));
 // biome-ignore lint/suspicious/noExplicitAny: layout data merged into $page.data
@@ -1164,7 +1164,7 @@ $effect(() => {
     if (spreadState.kind === 'settings' && settingsDirty) return;
     username = user.username ?? '';
     diaryTitle = user.diary_title ?? 'D I A R Y';
-    fontSizeCqw = user.font_size ?? 3.4;
+    fontSizeCqw = user.font_size ?? 4.0;
     journalFont = user.journal_font ?? 'eb-garamond';
     voiceURI = user.voice_uri ?? null;
     if (spreadState.kind !== 'settings') {

@@ -87,6 +87,13 @@ const { data, form }: { data: PageData; form: ActionData } = $props();
 				Create account
 			</button>
 		</form>
+
+		<a
+			href="/login"
+			class="block w-full rounded-sm border border-cream-300 px-4 py-2 text-center font-serif text-sm text-ink-900 hover:border-ornament-gold hover:text-ornament-gold"
+		>
+			Done — go to the diary
+		</a>
 		{/if}
 	</div>
 </div>
